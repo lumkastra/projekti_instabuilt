@@ -212,17 +212,6 @@
     </article>
   </section>
 
-  <!-- ============ MISSION BAND ============ -->
-  <section class="mission">
-    <div class="mission-inner reveal">
-      <p class="eyebrow">Why offsite</p>
-      <blockquote>
-        Every building begins with waste.<br><em>Ours begins without it.</em>
-      </blockquote>
-      <p class="mission-copy">Construction is one of the largest producers of industrial waste on the planet. By manufacturing buildings in a factory and assembling them on site, InstaBuilt removes the waste before it is ever created — cleaner sites, quieter neighborhoods, and buildings that leave less behind.</p>
-    </div>
-  </section>
-
   <!-- ============ EVENTS ============ -->
   <section class="section events" id="events">
     <div class="section-head reveal">
@@ -233,7 +222,16 @@
       <p class="section-intro">From Davos to Las Vegas — we exhibit where the industry decides the future of building.</p>
     </div>
 
-    <div class="event-scroll reveal">
+    <div class="event-nav reveal">
+      <button class="event-arrow" id="eventPrev" type="button" aria-label="Previous events">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <button class="event-arrow" id="eventNext" type="button" aria-label="Next events">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+
+    <div class="event-scroll reveal" id="eventScroll">
       <a class="event-card" href="https://www.instabuilt.com/" target="_blank" rel="noopener">
         <div class="event-img"><img src="images/events/davos.jpg" alt="InstaBuilt at House of Kosova in Davos, Switzerland" loading="lazy"></div>
         <p class="event-loc">Davos · Switzerland</p>
@@ -269,6 +267,17 @@
         <p class="event-loc">Industry</p>
         <h3>RETCON</h3>
       </a>
+    </div>
+  </section>
+
+  <!-- ============ MISSION BAND ============ -->
+  <section class="mission">
+    <div class="mission-inner reveal">
+      <p class="eyebrow">Why offsite</p>
+      <blockquote>
+        Every building begins with waste.<br><em>Ours begins without it.</em>
+      </blockquote>
+      <p class="mission-copy">Construction is one of the largest producers of industrial waste on the planet. By manufacturing buildings in a factory and assembling them on site, InstaBuilt removes the waste before it is ever created — cleaner sites, quieter neighborhoods, and buildings that leave less behind.</p>
     </div>
   </section>
 
@@ -325,6 +334,48 @@
     <span class="footer-tag">Build faster. Waste nothing.</span>
   </div>
 </footer>
+
+<!-- ============ CHAT WIDGET ============ -->
+<button class="chat-btn" id="chatBtn" type="button" aria-expanded="false" aria-haspopup="dialog" aria-label="Open customer support chat">
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M21 12a8 8 0 0 1-8 8H4l2.4-2.4A8 8 0 1 1 21 12z"/>
+    <path d="M9 11h.01M13 11h.01M17 11h.01"/>
+  </svg>
+  <span>Customer support</span>
+</button>
+
+<div class="chat-panel" id="chatPanel" role="dialog" aria-label="Customer support chat" aria-hidden="true">
+  <div class="chat-head">
+    <span class="chat-avatar" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 13a8 8 0 0 1 16 0"/>
+        <rect x="2.5" y="13" width="4" height="6" rx="1.5"/>
+        <rect x="17.5" y="13" width="4" height="6" rx="1.5"/>
+        <path d="M20 19a4 4 0 0 1-4 2h-2"/>
+      </svg>
+    </span>
+    <div>
+      <h3>Customer support</h3>
+      <p>InstaBuilt · usually replies instantly</p>
+    </div>
+    <button class="chat-close" id="chatClose" type="button" aria-label="Close chat">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div class="chat-body" id="chatBody"></div>
+  <div class="chat-quick" id="chatQuick">
+    <button type="button">Pop-Up sizes &amp; prices</button>
+    <button type="button">How fast can you build?</button>
+    <button type="button">Sustainability &amp; waste</button>
+    <button type="button">Become a partner</button>
+  </div>
+  <form class="chat-input" id="chatForm">
+    <input id="chatInput" type="text" placeholder="Type your message…" aria-label="Your message" autocomplete="off">
+    <button class="chat-send" type="submit" aria-label="Send message">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+    </button>
+  </form>
+</div>
 
 <script src="js/main.js"></script>
 </body>

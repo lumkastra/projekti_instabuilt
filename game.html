@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cherry Seed Mission — InstaBuilt Game</title>
-<meta name="description" content="Help Pip the builder find cherry seeds and plant them to grow an InstaBuilt Cherry Community.">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Cherry Community Simulator — InstaBuilt Game</title>
+<meta name="description" content="Help Pip the builder plant cherry seeds across InstaBuilt Cherry Communities — before the seed thieves and the clock get you.">
 <link rel="icon" type="image/png" href="images/instabuilt-thumbnail.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,135 +12,121 @@
 <style>
   :root {
     --olive: #808336;
-    --olive-deep: #5f6327;
     --olive-btn: #6f7231;
     --olive-btn-hover: #5f6228;
     --paper: #f4f2ed;
     --ink: #16181d;
-    --muted: #63676e;
     --dark: #131610;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
   body {
     font-family: "Montserrat", "Segoe UI", system-ui, sans-serif;
     background: var(--dark);
     color: var(--paper);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 1.25rem 1rem 2.5rem;
-  }
-  .game-head {
-    width: 100%;
-    max-width: 960px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-  }
-  .game-head .brand {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    color: var(--paper);
-    text-decoration: none;
-  }
-  .game-head img { width: 36px; height: 36px; border-radius: 0; }
-  .game-head .brand span { font-weight: 700; font-size: 1.15rem; letter-spacing: -0.01em; }
-  .game-head .brand em { font-style: italic; color: #d9e0a8; }
-  .back-link {
-    color: rgba(244, 242, 237, 0.8);
-    text-decoration: none;
-    font-size: 0.85rem;
-    font-weight: 600;
-    border: 1px solid rgba(244, 242, 237, 0.25);
-    border-radius: 999px;
-    padding: 0.45rem 1rem;
-    transition: border-color 0.15s ease, color 0.15s ease;
-  }
-  .back-link:hover { border-color: #d9e0a8; color: #d9e0a8; }
-
-  .hud {
-    width: 100%;
-    max-width: 960px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.75rem;
-    flex-wrap: wrap;
-  }
-  .hud-chip {
-    font-family: "Montserrat", sans-serif;
-    font-weight: 600;
-    font-size: 0.82rem;
-    letter-spacing: 0.06em;
-    background: var(--olive-btn);
-    color: #fff;
-    border-radius: 999px;
-    padding: 0.45rem 1.1rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-  }
-  .hud-chip .dot { width: 10px; height: 10px; border-radius: 50%; background: #e05656; display: inline-block; }
-  .hud-chip .dot.planted { background: #97ab52; }
-  .hud-hint { color: rgba(244, 242, 237, 0.65); font-size: 0.8rem; font-weight: 500; }
-
-  .canvas-shell {
-    position: relative;
-    width: 100%;
-    max-width: 960px;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 30px 60px -25px rgba(0, 0, 0, 0.7);
-    border: 1px solid rgba(128, 131, 54, 0.45);
+    touch-action: none;
   }
   canvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
     display: block;
-    width: 100%;
-    height: auto;
-    touch-action: none;
     background: #dde3c0;
   }
 
+  /* ---------- top bar ---------- */
+  .game-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.7rem 0.9rem;
+    flex-wrap: wrap;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(19, 22, 16, 0.72), rgba(19, 22, 16, 0));
+  }
+  .game-bar > * { pointer-events: auto; }
+  .back-link {
+    color: rgba(244, 242, 237, 0.9);
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: rgba(19, 22, 16, 0.55);
+    border: 1px solid rgba(244, 242, 237, 0.3);
+    border-radius: 999px;
+    padding: 0.45rem 0.95rem;
+    white-space: nowrap;
+  }
+  .back-link:hover { border-color: #d9e0a8; color: #d9e0a8; }
+  .hud {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .hud-chip {
+    font-weight: 600;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    background: rgba(19, 22, 16, 0.72);
+    border: 1px solid rgba(128, 131, 54, 0.55);
+    color: #fff;
+    border-radius: 999px;
+    padding: 0.4rem 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+  }
+  .hud-chip .hp { color: #e05656; letter-spacing: 0.08em; }
+  .hud-chip .hp.off { color: rgba(255, 255, 255, 0.28); }
+  .hud-chip .seed-dot { width: 9px; height: 9px; border-radius: 50%; background: #e05656; display: inline-block; }
+  .hud-chip .seed-dot.planted { background: #97ab52; }
+  .hud-chip.danger { border-color: #e05656; animation: pulse 0.9s ease-in-out infinite; }
+  @keyframes pulse { 50% { background: rgba(224, 86, 86, 0.35); } }
+  .hud-chip .lv { color: #d9e0a8; }
+
+  /* ---------- overlays ---------- */
   .overlay {
-    position: absolute;
+    position: fixed;
     inset: 0;
+    z-index: 30;
     background: rgba(19, 22, 16, 0.88);
-    backdrop-filter: blur(3px);
+    backdrop-filter: blur(4px);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
     padding: 1.5rem;
-    gap: 0.9rem;
+    gap: 0.85rem;
   }
   .overlay.hidden { display: none; }
   .overlay .kicker {
-    font-family: "Montserrat", sans-serif;
     font-weight: 600;
-    font-size: 0.7rem;
-    letter-spacing: 0.22em;
+    font-size: 0.68rem;
+    letter-spacing: 0.24em;
     text-transform: uppercase;
     color: #b9c185;
   }
   .overlay h1 {
-    font-size: clamp(1.6rem, 4.5vw, 2.6rem);
+    font-size: clamp(1.7rem, 5vw, 3rem);
     font-weight: 700;
     letter-spacing: -0.02em;
-    line-height: 1.1;
+    line-height: 1.08;
   }
   .overlay h1 em { font-style: italic; color: #d9e0a8; }
-  .overlay p { color: rgba(244, 242, 237, 0.78); max-width: 46ch; font-size: 0.95rem; line-height: 1.6; }
-  .overlay .stats { display: flex; gap: 1.4rem; margin: 0.4rem 0; flex-wrap: wrap; justify-content: center; }
-  .overlay .stats div { display: flex; flex-direction: column; align-items: center; }
+  .overlay h1.bad em { color: #e05656; }
+  .overlay p { color: rgba(244, 242, 237, 0.8); max-width: 52ch; font-size: 0.95rem; line-height: 1.6; }
+  .overlay .stats { display: flex; gap: 1.5rem; margin: 0.4rem 0; flex-wrap: wrap; justify-content: center; }
+  .overlay .stats div { display: flex; flex-direction: column; align-items: center; min-width: 90px; }
   .overlay .stats b { font-size: 1.5rem; font-weight: 700; color: #d9e0a8; }
-  .overlay .stats span { font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(244, 242, 237, 0.6); }
+  .overlay .stats span { font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(244, 242, 237, 0.6); }
   .btn {
     font-family: "Montserrat", sans-serif;
     font-weight: 600;
@@ -159,26 +145,42 @@
   .btn.ghost:hover { background: rgba(244, 242, 237, 0.08); }
   .btn-row { display: flex; gap: 0.8rem; flex-wrap: wrap; justify-content: center; }
 
-  .touch-pad {
-    display: none;
-    width: 100%;
-    max-width: 960px;
-    margin-top: 1rem;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
+  /* level banner */
+  .banner {
+    position: fixed;
+    top: 22%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 25;
+    background: rgba(19, 22, 16, 0.85);
+    border: 1px solid rgba(128, 131, 54, 0.6);
+    border-radius: 12px;
+    padding: 1.1rem 2rem;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    pointer-events: none;
   }
-  .touch-pad .pad {
-    display: grid;
-    grid-template-columns: repeat(3, 52px);
-    grid-template-rows: repeat(2, 52px);
+  .banner.show { opacity: 1; }
+  .banner .kicker { font-size: 0.66rem; letter-spacing: 0.24em; text-transform: uppercase; color: #b9c185; font-weight: 600; }
+  .banner h2 { font-size: 1.35rem; font-weight: 700; color: #fff; margin-top: 0.15rem; }
+  .banner p { font-size: 0.8rem; color: rgba(244, 242, 237, 0.7); margin-top: 0.2rem; }
+
+  /* touch pad */
+  .touch-pad {
+    position: fixed;
+    bottom: max(1.1rem, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    display: none;
     gap: 6px;
   }
   .touch-pad button {
-    width: 52px; height: 52px;
-    border-radius: 10px;
-    border: 1px solid rgba(244, 242, 237, 0.3);
-    background: rgba(128, 131, 54, 0.35);
+    width: 54px; height: 54px;
+    border-radius: 12px;
+    border: 1px solid rgba(244, 242, 237, 0.35);
+    background: rgba(128, 131, 54, 0.45);
     color: #fff;
     font-size: 1.3rem;
     font-weight: 700;
@@ -188,234 +190,475 @@
     -webkit-user-select: none;
   }
   .touch-pad button:active { background: var(--olive-btn); }
-  .touch-pad .pad .u { grid-column: 2; grid-row: 1; }
-  .touch-pad .pad .l { grid-column: 1; grid-row: 2; }
-  .touch-pad .pad .d { grid-column: 2; grid-row: 2; }
-  .touch-pad .pad .r { grid-column: 3; grid-row: 2; }
-
-  @media (pointer: coarse), (max-width: 720px) {
-    .touch-pad { display: flex; }
-    .hud-hint { display: none; }
+  @media (pointer: coarse) {
+    .touch-pad { display: grid; grid-template-columns: repeat(4, 54px); }
   }
 </style>
 </head>
 <body>
 
-<header class="game-head">
-  <a class="brand" href="index.html">
-    <img src="images/instabuilt-thumbnail.png" alt="InstaBuilt logo">
-    <span>Insta<em>Built</em></span>
-  </a>
-  <a class="back-link" href="index.html">← Back to the site</a>
-</header>
+<canvas id="game"></canvas>
 
-<div class="hud">
-  <span class="hud-chip"><span class="dot" id="seedDot"></span> Seeds: <span id="seedCount">0</span> / 8</span>
-  <span class="hud-chip">Planted: <span id="plantedCount">0</span> / 8</span>
-  <span class="hud-hint">WASD / arrow keys to move · collect seeds · plant them in the spots</span>
-  <span class="hud-chip">Time: <span id="timer">0:00</span></span>
-</div>
-
-<div class="canvas-shell">
-  <canvas id="game" width="960" height="600"></canvas>
-
-  <div class="overlay" id="startOverlay">
-    <p class="kicker">InstaBuilt · Cherry Communities</p>
-    <h1>Cherry <em>Seed</em> Mission</h1>
-    <p>Help <strong>Pip the builder</strong> find the cherry seeds scattered across the field and plant them in the empty spots. Plant all 8 and a brand-new Cherry Community starts growing!</p>
-    <p class="kicker" style="color:rgba(244,242,237,.55)">Move with WASD or arrow keys · on touch use the pad below</p>
-    <button class="btn" id="startBtn">Start planting</button>
-  </div>
-
-  <div class="overlay hidden" id="winOverlay">
-    <p class="kicker">Cherry Communities</p>
-    <h1>A community is <em>growing!</em></h1>
-    <p>Pip planted all 8 cherry seeds. In a few seasons, this will be a full InstaBuilt Cherry Community — sustainable, connected, and green.</p>
-    <div class="stats">
-      <div><b id="winTime">0:00</b><span>Time</span></div>
-      <div><b>8 / 8</b><span>Seeds planted</span></div>
-      <div><b id="winSteps">0</b><span>Steps</span></div>
-    </div>
-    <div class="btn-row">
-      <button class="btn" id="againBtn">Play again</button>
-      <a class="btn ghost" href="index.html">Back to the site</a>
-    </div>
+<div class="game-bar">
+  <a class="back-link" href="index.html">← InstaBuilt site</a>
+  <div class="hud">
+    <span class="hud-chip"><span class="hp" id="hpChip">♥♥♥</span></span>
+    <span class="hud-chip"><span class="seed-dot" id="seedDot"></span> Seeds: <span id="seedCount">0</span>/<span id="seedTotal">0</span></span>
+    <span class="hud-chip">Planted: <span id="plantedCount">0</span>/<span id="plantedTotal">0</span></span>
+    <span class="hud-chip" id="timerChip">⏱ <span id="timer">1:00</span></span>
+    <span class="hud-chip"><span class="lv" id="levelName">Level 1</span></span>
   </div>
 </div>
 
-<div class="touch-pad">
-  <span></span>
-  <div class="pad">
-    <button class="u" data-dir="up" aria-label="Up">▲</button>
-    <button class="l" data-dir="left" aria-label="Left">◀</button>
-    <button class="d" data-dir="down" aria-label="Down">▼</button>
-    <button class="r" data-dir="right" aria-label="Right">▶</button>
+<div class="banner" id="banner">
+  <p class="kicker" id="bannerKicker">Level 1</p>
+  <h2 id="bannerTitle">Seedling Meadow</h2>
+  <p id="bannerGoal">Plant 6 seeds before the thieves and the clock get you</p>
+</div>
+
+<div class="touch-pad" id="touchPad">
+  <button data-dir="up" aria-label="Up">▲</button>
+  <button data-dir="left" aria-label="Left">◀</button>
+  <button data-dir="down" aria-label="Down">▼</button>
+  <button data-dir="right" aria-label="Right">▶</button>
+</div>
+
+<!-- start -->
+<div class="overlay" id="startOverlay">
+  <p class="kicker">InstaBuilt · Cherry Communities</p>
+  <h1>Cherry Community<br><em>Simulator</em></h1>
+  <p>The fields around the new InstaBuilt Cherry Communities are full of cherry seeds — but <strong>seed thieves</strong> lurk between the planting spots. Help <strong>Pip the builder</strong> plant every seed in every field before time runs out. The more you plant, the angrier the thieves get…</p>
+  <p style="font-size:0.85rem; color:rgba(244,242,237,.65)">Move: WASD / arrows · touch pad on mobile · Collect seeds · Plant them in the holes · Don't get caught (♥♥♥)</p>
+  <button class="btn" id="startBtn">Start building</button>
+</div>
+
+<!-- level complete -->
+<div class="overlay hidden" id="levelOverlay">
+  <p class="kicker">Level <span id="lvNum">1</span> complete</p>
+  <h1>Field <em>planted!</em></h1>
+  <p>Pip planted every seed in this field. The community is one step closer…</p>
+  <div class="stats">
+    <div><b id="lvTime">0:00</b><span>Time used</span></div>
+    <div><b id="lvSeeds">0</b><span>Seeds planted</span></div>
+    <div><b id="lvHp">3</b><span>Health left</span></div>
   </div>
-  <span></span>
+  <div class="btn-row">
+    <button class="btn" id="nextBtn">Next field →</button>
+  </div>
+</div>
+
+<!-- game over -->
+<div class="overlay hidden" id="overOverlay">
+  <p class="kicker">Game over</p>
+  <h1 class="bad">The <em id="overReason">time</em><br>got you.</h1>
+  <p id="overText">The thieves made off with the seeds — and the Cherry Community will have to wait.</p>
+  <div class="btn-row">
+    <button class="btn" id="retryBtn">Try again</button>
+    <a class="btn ghost" href="index.html">Back to the site</a>
+  </div>
+</div>
+
+<!-- victory -->
+<div class="overlay hidden" id="winOverlay">
+  <p class="kicker">All fields complete</p>
+  <h1>A Cherry Community is <em>growing!</em></h1>
+  <p>Pip planted every seed across every field. In a few seasons, this becomes a full InstaBuilt Cherry Community — sustainable, connected, and green.</p>
+  <div class="stats">
+    <div><b id="winLevels">3</b><span>Fields</span></div>
+    <div><b id="winSeeds">0</b><span>Seeds planted</span></div>
+    <div><b id="winTime">0:00</b><span>Total time</span></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn" id="againBtn">Play again</button>
+    <a class="btn ghost" href="index.html">Back to the site</a>
+  </div>
 </div>
 
 <script>
 (function () {
   "use strict";
 
+  var GOD = /[?&]god=1/.test(window.location.search || "");
+
   var canvas = document.getElementById("game");
   var ctx = canvas.getContext("2d");
-  var W = 960, H = 600;
-  var TARGET = 8;
 
-  var holes = [
-    { x: 170, y: 150 }, { x: 420, y: 105 }, { x: 700, y: 155 }, { x: 875, y: 290 },
-    { x: 545, y: 330 }, { x: 250, y: 430 }, { x: 620, y: 480 }, { x: 120, y: 310 }
+  var W = 960, H = 700;
+  var DPR = 1;
+  var T = 0; // global anim time
+
+  var LEVELS = [
+    { name: "Seedling Meadow", seeds: 6, time: 60, patrol: 1, chaser: 0, speed: 80 },
+    { name: "Orchard Field",   seeds: 9, time: 75, patrol: 2, chaser: 1, speed: 95 },
+    { name: "Community Grove", seeds: 12, time: 90, patrol: 2, chaser: 2, speed: 110 }
   ];
-  holes.forEach(function (h) { h.planted = false; h.age = 0; h.born = 0; });
 
-  var char = { x: 480, y: 540, r: 15, dir: 0, moving: false, step: 0 };
-  var seeds = [];
-  var carrying = 0;
-  var planted = 0;
-  var steps = 0;
-  var startTime = 0;
-  var elapsed = 0;
-  var running = false;
-  var t = 0;
+  // hole positions as fractions of the screen
+  var HOLES_F = [
+    [0.16, 0.22], [0.50, 0.14], [0.84, 0.24], [0.90, 0.50],
+    [0.68, 0.42], [0.42, 0.34], [0.24, 0.50], [0.34, 0.72],
+    [0.62, 0.66], [0.78, 0.84], [0.50, 0.86], [0.12, 0.80]
+  ];
+
+  var state = {
+    level: 0,
+    holes: [], seeds: [], enemies: [],
+    char: null,
+    carrying: 0, planted: 0, hp: 3, maxHp: 3,
+    timeLeft: 0, elapsed: 0,
+    running: false, activated: false, banner: 0,
+    totals: { seeds: 0, time: 0 }
+  };
 
   var keys = {};
   var touchKeys = { up: false, down: false, left: false, right: false };
 
-  /* ---------- setup ---------- */
-  function resetSeeds() {
-    seeds = [];
-    var attempts = 0;
-    while (seeds.length < TARGET && attempts < 500) {
-      attempts++;
-      var s = {
-        x: 60 + Math.random() * (W - 120),
-        y: 70 + Math.random() * (H - 130),
-        taken: false,
-        seed: Math.random() * 10
-      };
-      var ok = true;
-      for (var i = 0; i < seeds.length; i++) {
-        var d = Math.hypot(seeds[i].x - s.x, seeds[i].y - s.y);
-        if (d < 55) { ok = false; break; }
-      }
-      if (ok) seeds.push(s);
-    }
-    // guarantee the full set even in a crowded corner
-    while (seeds.length < TARGET) {
-      seeds.push({ x: 60 + Math.random() * (W - 120), y: 70 + Math.random() * (H - 130), taken: false, seed: Math.random() * 10 });
+  /* ---------- layout ---------- */
+  function fit() {
+    DPR = window.devicePixelRatio || 1;
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    rescale();
+  }
+
+  function rescale() {
+    state.holes.forEach(function (h) { h.x = h.fx * W; h.y = h.fy * H; });
+    state.seeds.forEach(function (s) { s.x = s.fx * W; s.y = s.fy * H; });
+    state.enemies.forEach(function (e) {
+      e.x = e.fx * W; e.y = e.fy * H;
+      e.wps.forEach(function (w) { w.x = w.fx * W; w.y = w.fy * H; });
+    });
+    if (state.char) {
+      state.char.x = Math.max(20, Math.min(W - 20, state.char.x));
+      state.char.y = Math.max(20, Math.min(H - 20, state.char.y));
     }
   }
 
-  function start() {
-    resetSeeds();
-    holes.forEach(function (h) { h.planted = false; h.age = 0; });
-    carrying = 0;
-    planted = 0;
-    steps = 0;
-    elapsed = 0;
-    char.x = 480; char.y = 540; char.dir = 0; char.moving = false;
-    startTime = performance.now();
-    running = true;
-    document.getElementById("startOverlay").classList.add("hidden");
-    document.getElementById("winOverlay").classList.add("hidden");
+  /* ---------- level setup ---------- */
+  function loadLevel(i) {
+    state.level = i;
+    var cfg = LEVELS[i];
+    var n = cfg.seeds;
+
+    state.holes = [];
+    for (var h = 0; h < n; h++) {
+      state.holes.push({ fx: HOLES_F[h][0], fy: HOLES_F[h][1], x: 0, y: 0, planted: false, age: 0 });
+    }
+
+    state.seeds = [];
+    var guard = 0;
+    while (state.seeds.length < n && guard < 600) {
+      guard++;
+      var fx = 0.06 + Math.random() * 0.88;
+      var fy = 0.1 + Math.random() * 0.78;
+      var ok = true;
+      for (var j = 0; j < state.seeds.length; j++) {
+        var d = Math.hypot(state.seeds[j].fx - fx, state.seeds[j].fy - fy);
+        if (d < 0.06) { ok = false; break; }
+      }
+      if (ok) state.seeds.push({ fx: fx, fy: fy, x: 0, y: 0, taken: false, seed: Math.random() * 10 });
+    }
+    while (state.seeds.length < n) {
+      state.seeds.push({ fx: 0.06 + Math.random() * 0.88, fy: 0.1 + Math.random() * 0.78, x: 0, y: 0, taken: false, seed: Math.random() * 10 });
+    }
+
+    state.enemies = [];
+    var mkEnemy = function (fx, fy, type) {
+      var wps = [];
+      if (type === "patrol") {
+        for (var k = 0; k < 3; k++) {
+          wps.push({ fx: 0.08 + Math.random() * 0.84, fy: 0.12 + Math.random() * 0.76, x: 0, y: 0 });
+        }
+      }
+      return { fx: fx, fy: fy, x: 0, y: 0, type: type, wps: wps, wpi: 0, speed: cfg.speed, active: false, face: 0, step: 0 };
+    };
+    for (var p = 0; p < cfg.patrol; p++) state.enemies.push(mkEnemy(0.5, 0.25, "patrol"));
+    for (var c = 0; c < cfg.chaser; c++) state.enemies.push(mkEnemy(0.3 + Math.random() * 0.4, 0.2, "chaser"));
+
+    state.carrying = 0;
+    state.planted = 0;
+    state.hp = state.maxHp;
+    state.elapsed = 0;
+    state.timeLeft = cfg.time;
+    state.activated = false;
+    state.running = true;
+    state.banner = 2.4;
+    state.char = { x: W * 0.5, y: H - 70, r: 15, dir: -Math.PI / 2, moving: false, step: 0, invuln: 0, kbx: 0, kby: 0, kbt: 0 };
+
+    rescale();
+    showBanner();
     updateHud();
+  }
+
+  function showBanner() {
+    var cfg = LEVELS[state.level];
+    document.getElementById("bannerKicker").textContent = "Level " + (state.level + 1);
+    document.getElementById("bannerTitle").textContent = cfg.name;
+    document.getElementById("bannerGoal").textContent = "Plant " + cfg.seeds + " seeds before the thieves and the clock get you";
+    document.getElementById("banner").classList.add("show");
+  }
+
+  function startGame() {
+    document.getElementById("startOverlay").classList.add("hidden");
+    loadLevel(0);
   }
 
   /* ---------- input ---------- */
   window.addEventListener("keydown", function (e) {
     if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].indexOf(e.key) !== -1) e.preventDefault();
-    keys[e.key.toLowerCase()] = true;
-    keys["arrow" + e.key.toLowerCase().replace("arrow", "")] = true;
+    var k = e.key.toLowerCase();
+    keys[k] = true;
+    keys["arrow" + k.replace("arrow", "")] = true;
   });
   window.addEventListener("keyup", function (e) {
-    keys[e.key.toLowerCase()] = false;
-    keys["arrow" + e.key.toLowerCase().replace("arrow", "")] = false;
+    var k = e.key.toLowerCase();
+    keys[k] = false;
+    keys["arrow" + k.replace("arrow", "")] = false;
   });
-
-  var padBtns = document.querySelectorAll(".touch-pad button");
-  padBtns.forEach(function (b) {
+  document.querySelectorAll(".touch-pad button").forEach(function (b) {
     var dir = b.getAttribute("data-dir");
-    function on() { touchKeys[dir] = true; }
-    function off() { touchKeys[dir] = false; }
-    b.addEventListener("pointerdown", on);
-    b.addEventListener("pointerup", off);
-    b.addEventListener("pointerleave", off);
-    b.addEventListener("pointercancel", off);
+    b.addEventListener("pointerdown", function () { touchKeys[dir] = true; });
+    b.addEventListener("pointerup", function () { touchKeys[dir] = false; });
+    b.addEventListener("pointerleave", function () { touchKeys[dir] = false; });
+    b.addEventListener("pointercancel", function () { touchKeys[dir] = false; });
   });
 
-  /* ---------- movement ---------- */
-  function move(dt) {
+  /* ---------- player ---------- */
+  function movePlayer(dt) {
+    var c = state.char;
     var up = (keys["w"] || keys["arrowup"]) || touchKeys.up;
     var down = (keys["s"] || keys["arrowdown"]) || touchKeys.down;
     var left = (keys["a"] || keys["arrowleft"]) || touchKeys.left;
     var right = (keys["d"] || keys["arrowright"]) || touchKeys.right;
     var vx = (right ? 1 : 0) - (left ? 1 : 0);
     var vy = (down ? 1 : 0) - (up ? 1 : 0);
-    char.moving = vx !== 0 || vy !== 0;
-    if (char.moving) {
-      steps++;
-      var len = Math.hypot(vx, vy);
-      vx /= len; vy /= len;
-      var speed = 235;
-      char.x += vx * speed * dt;
-      char.y += vy * speed * dt;
-      char.dir = Math.atan2(vy, vx);
-      char.step += dt * 9;
+
+    // knockback overrides input briefly
+    if (c.kbt > 0) {
+      c.kbt -= dt;
+      c.x += c.kbx * dt;
+      c.y += c.kby * dt;
+      c.moving = true;
+    } else {
+      c.moving = vx !== 0 || vy !== 0;
+      if (c.moving) {
+        var len = Math.hypot(vx, vy);
+        vx /= len; vy /= len;
+        c.x += vx * 235 * dt;
+        c.y += vy * 235 * dt;
+        c.dir = Math.atan2(vy, vx);
+        c.step += dt * 9;
+      }
     }
-    char.x = Math.max(char.r + 6, Math.min(W - char.r - 6, char.x));
-    char.y = Math.max(char.r + 6, Math.min(H - char.r - 6, char.y));
+    c.x = Math.max(c.r + 6, Math.min(W - c.r - 6, c.x));
+    c.y = Math.max(c.r + 6, Math.min(H - c.r - 6, c.y));
+    if (c.invuln > 0) c.invuln -= dt;
+  }
+
+  function blockedByTree(x, y) {
+    for (var i = 0; i < state.holes.length; i++) {
+      var h = state.holes[i];
+      if (h.planted && Math.hypot(x - h.x, y - h.y) < 26) return true;
+    }
+    return false;
+  }
+
+  /* ---------- enemies ---------- */
+  function updateEnemies(dt) {
+    var c = state.char;
+    state.enemies.forEach(function (e) {
+      if (!e.active) { e.step += dt * 2; return; }
+      var dx = c.x - e.x, dy = c.y - e.y;
+      var d = Math.hypot(dx, dy);
+      var chasing = e.type === "chaser" || (e.type === "patrol" && d < 170);
+      var vx = 0, vy = 0;
+      if (chasing) {
+        vx = dx / d; vy = dy / d;
+        e.face = Math.atan2(dy, dx);
+      } else {
+        var w = e.wps[e.wpi];
+        var wx = w.x - e.x, wy = w.y - e.y;
+        var wd = Math.hypot(wx, wy);
+        if (wd < 10) { e.wpi = (e.wpi + 1) % e.wps.length; }
+        else { vx = wx / wd; vy = wy / wd; e.face = Math.atan2(wy, wx); }
+      }
+      var sp = e.speed * (1 + state.planted * 0.09);
+      var nx = e.x + vx * sp * dt;
+      var ny = e.y + vy * sp * dt;
+      if (!blockedByTree(nx, ny)) {
+        e.x = Math.max(18, Math.min(W - 18, nx));
+        e.y = Math.max(18, Math.min(H - 18, ny));
+      } else {
+        // blocked by a tree: slip around it for a moment
+        if (e.bounce <= 0) {
+          e.bounce = 0.55 + Math.random() * 0.3;
+          e.bounceDir = Math.random() < 0.5 ? -1 : 1;
+        }
+      }
+      if (e.bounce > 0) {
+        e.bounce -= dt;
+        var px = -vy * e.bounceDir, py = vx * e.bounceDir;
+        var bn = Math.hypot(px, py) || 1;
+        var bx = e.x + (px / bn) * sp * 0.85 * dt;
+        var by = e.y + (py / bn) * sp * 0.85 * dt;
+        if (!blockedByTree(bx, by)) {
+          e.x = Math.max(18, Math.min(W - 18, bx));
+          e.y = Math.max(18, Math.min(H - 18, by));
+        }
+      }
+      e.step += dt * 8;
+
+      // catch the player
+      if (c.invuln <= 0 && d < 27) damage(e);
+    });
+  }
+
+  function damage(e) {
+    if (GOD) return; // cheat mode: invincible
+    var c = state.char;
+    state.hp--;
+    c.invuln = 1.2;
+    var dx = c.x - e.x, dy = c.y - e.y;
+    var d = Math.hypot(dx, dy) || 1;
+    c.kbx = (dx / d) * 190;
+    c.kby = (dy / d) * 190;
+    c.kbt = 0.28;
+    // drop half the carried seeds
+    if (state.carrying > 0) {
+      var drop = Math.max(1, Math.floor(state.carrying / 2));
+      for (var i = 0; i < drop; i++) {
+        var ang = Math.random() * Math.PI * 2;
+        var dist = 34 + Math.random() * 50;
+        var fx = (c.x + Math.cos(ang) * dist) / W;
+        var fy = (c.y + Math.sin(ang) * dist) / H;
+        state.seeds.push({ fx: fx, fy: fy, x: 0, y: 0, taken: false, seed: Math.random() * 10 });
+      }
+      state.carrying -= drop;
+    }
+    updateHud();
+    if (state.hp <= 0) gameOver("caught");
   }
 
   /* ---------- interactions ---------- */
   function interact() {
-    for (var i = 0; i < seeds.length; i++) {
-      var s = seeds[i];
+    var c = state.char;
+    for (var i = 0; i < state.seeds.length; i++) {
+      var s = state.seeds[i];
       if (s.taken) continue;
-      if (Math.hypot(s.x - char.x, s.y - char.y) < 28) {
+      if (Math.hypot(s.x - c.x, s.y - c.y) < 30) {
         s.taken = true;
-        carrying++;
+        state.carrying++;
       }
     }
-    for (var j = 0; j < holes.length; j++) {
-      var h = holes[j];
-      if (h.planted || carrying === 0) continue;
-      if (Math.hypot(h.x - char.x, h.y - char.y) < 30) {
+    for (var j = 0; j < state.holes.length; j++) {
+      var h = state.holes[j];
+      if (h.planted || state.carrying === 0) continue;
+      if (Math.hypot(h.x - c.x, h.y - c.y) < 32) {
         h.planted = true;
         h.age = 0;
-        carrying--;
-        planted++;
-        if (planted === TARGET) win();
+        state.carrying--;
+        state.planted++;
+        if (!state.activated) {
+          state.activated = true;
+          state.enemies.forEach(function (e) { e.active = true; });
+        }
+        if (state.planted >= LEVELS[state.level].seeds) levelComplete();
       }
     }
   }
 
-  function win() {
-    running = false;
-    document.getElementById("winTime").textContent = fmt(elapsed);
-    document.getElementById("winSteps").textContent = steps;
-    document.getElementById("winOverlay").classList.remove("hidden");
+  /* ---------- flow ---------- */
+  function levelComplete() {
+    state.running = false;
+    var cfg = LEVELS[state.level];
+    state.totals.seeds += state.planted;
+    state.totals.time += state.elapsed;
+    document.getElementById("lvNum").textContent = state.level + 1;
+    document.getElementById("lvTime").textContent = fmt(state.elapsed);
+    document.getElementById("lvSeeds").textContent = state.planted;
+    document.getElementById("lvHp").textContent = state.hp;
+    document.getElementById("levelOverlay").classList.remove("hidden");
+    if (state.level >= LEVELS.length - 1) {
+      document.getElementById("nextBtn").textContent = "Finish the community 🍒";
+    } else {
+      document.getElementById("nextBtn").textContent = "Next field →";
+    }
+  }
+
+  function nextLevel() {
+    document.getElementById("levelOverlay").classList.add("hidden");
+    if (state.level >= LEVELS.length - 1) {
+      // victory
+      document.getElementById("winLevels").textContent = LEVELS.length;
+      document.getElementById("winSeeds").textContent = state.totals.seeds;
+      document.getElementById("winTime").textContent = fmt(state.totals.time);
+      document.getElementById("winOverlay").classList.remove("hidden");
+      return;
+    }
+    loadLevel(state.level + 1);
+  }
+
+  function gameOver(reason) {
+    if (!state.running) return;
+    state.running = false;
+    document.getElementById("overReason").textContent = reason === "time" ? "time" : "thieves";
+    document.getElementById("overText").textContent = reason === "time"
+      ? "The clock ran out before the seeds were planted. The field will have to wait."
+      : "The thieves made off with the seeds — and the Cherry Community will have to wait.";
+    document.getElementById("overOverlay").classList.remove("hidden");
+  }
+
+  /* ---------- HUD ---------- */
+  function fmt(sec) {
+    sec = Math.max(0, Math.floor(sec));
+    var m = Math.floor(sec / 60);
+    var s = sec % 60;
+    return m + ":" + (s < 10 ? "0" : "") + s;
+  }
+
+  function updateHud() {
+    var cfg = LEVELS[state.level];
+    document.getElementById("seedCount").textContent = state.carrying;
+    document.getElementById("seedTotal").textContent = cfg.seeds;
+    document.getElementById("plantedCount").textContent = state.planted;
+    document.getElementById("plantedTotal").textContent = cfg.seeds;
+    document.getElementById("timer").textContent = fmt(state.timeLeft);
+    document.getElementById("levelName").textContent = "Level " + (state.level + 1) + " · " + cfg.name;
+    var hpChip = document.getElementById("hpChip");
+    var hearts = "";
+    for (var i = 0; i < state.maxHp; i++) {
+      hearts += '<span class="hp' + (i < state.hp ? "" : " off") + '">♥</span>';
+    }
+    hpChip.innerHTML = hearts;
+    var seedDot = document.getElementById("seedDot");
+    seedDot.className = "seed-dot" + (state.carrying > 0 ? "" : " planted");
+    var timerChip = document.getElementById("timerChip");
+    timerChip.classList.toggle("danger", state.timeLeft <= 10);
   }
 
   /* ---------- drawing ---------- */
-  var grassPatches = [];
-  for (var p = 0; p < 26; p++) {
-    grassPatches.push({ x: Math.random() * W, y: Math.random() * H, r: 40 + Math.random() * 90 });
-  }
+  var patches = [];
+  (function makePatches() {
+    for (var i = 0; i < 26; i++) {
+      patches.push({ fx: Math.random(), fy: Math.random(), r: 40 + Math.random() * 90 });
+    }
+  })();
 
   function drawGround() {
     ctx.fillStyle = "#dde3c0";
     ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = "rgba(122, 138, 66, 0.16)";
-    for (var i = 0; i < grassPatches.length; i++) {
+    for (var i = 0; i < patches.length; i++) {
       ctx.beginPath();
-      ctx.arc(grassPatches[i].x, grassPatches[i].y, grassPatches[i].r, 0, 7);
+      ctx.arc(patches[i].fx * W, patches[i].fy * H, patches[i].r, 0, 7);
       ctx.fill();
     }
-    // soft vignette border
     ctx.strokeStyle = "rgba(19, 22, 16, 0.25)";
-    ctx.lineWidth = 6;
-    ctx.strokeRect(3, 3, W - 6, H - 6);
+    ctx.lineWidth = 5;
+    ctx.strokeRect(2.5, 2.5, W - 5, H - 5);
   }
 
   function drawHole(h) {
@@ -435,13 +678,9 @@
   }
 
   function drawTree(h) {
-    var age = Math.min(1, h.age);
-    var s = 0.35 + 0.65 * age;
-    var grow = Math.min(1, h.age * 1.4);
-    // trunk
+    var s = 0.35 + 0.65 * Math.min(1, h.age);
     ctx.fillStyle = "#8a6a45";
     ctx.fillRect(h.x - 4 * s, h.y - 16 * s, 8 * s, 16 * s);
-    // canopy
     ctx.fillStyle = "#7c8f3d";
     ctx.beginPath();
     ctx.arc(h.x, h.y - 22 * s, 17 * s, 0, 7);
@@ -450,8 +689,7 @@
     ctx.beginPath();
     ctx.arc(h.x - 6 * s, h.y - 27 * s, 11 * s, 0, 7);
     ctx.fill();
-    // cherries on the tree once fully grown
-    if (grow === 1) {
+    if (h.age >= 2.2) {
       ctx.fillStyle = "#d64545";
       ctx.beginPath(); ctx.arc(h.x - 8, h.y - 30, 3.2, 0, 7); ctx.fill();
       ctx.beginPath(); ctx.arc(h.x + 7, h.y - 25, 3.2, 0, 7); ctx.fill();
@@ -460,7 +698,7 @@
   }
 
   function drawSeed(s) {
-    var bob = Math.sin(t * 3 + s.seed) * 2;
+    var bob = Math.sin(T * 3 + s.seed) * 2;
     var y = s.y + bob;
     ctx.fillStyle = "#4e6b2f";
     ctx.lineWidth = 2.4;
@@ -478,108 +716,154 @@
     ctx.fill();
   }
 
-  function drawChar() {
-    // shadow
+  function drawEnemy(e) {
     ctx.fillStyle = "rgba(0,0,0,0.18)";
     ctx.beginPath();
-    ctx.ellipse(char.x, char.y + 14, 14, 6, 0, 0, 7);
+    ctx.ellipse(e.x, e.y + 14, 13, 5, 0, 0, 7);
     ctx.fill();
-    // feet
-    var swing = char.moving ? Math.sin(char.step) * 4 : 0;
-    ctx.fillStyle = "#3b3f33";
-    ctx.beginPath(); ctx.arc(char.x - 6, char.y + 11 + swing * 0.3, 4.5, 0, 7); ctx.fill();
-    ctx.beginPath(); ctx.arc(char.x + 6, char.y + 11 - swing * 0.3, 4.5, 0, 7); ctx.fill();
+    // legs
+    var swing = Math.sin(e.step) * 3.5;
+    ctx.strokeStyle = "#5d3b2c";
+    ctx.lineWidth = 2.5;
+    for (var i = -2; i <= 2; i++) {
+      var ph = Math.sin(e.step + i * 1.1) * 4;
+      ctx.beginPath();
+      ctx.moveTo(e.x + i * 5, e.y + 6);
+      ctx.lineTo(e.x + i * 5 + ph * 0.5, e.y + 15);
+      ctx.stroke();
+    }
     // body
+    ctx.fillStyle = "#8a4a38";
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, 14, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = "#6f3a2b";
+    ctx.beginPath();
+    ctx.arc(e.x, e.y - 2, 10, Math.PI, 0);
+    ctx.fill();
+    // eyes (face movement direction)
+    var ex = Math.cos(e.face) * 4;
+    var ey = Math.sin(e.face) * 4;
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.arc(e.x + ex - 4, e.y + ey - 3, 3.4, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(e.x + ex + 4, e.y + ey - 3, 3.4, 0, 7); ctx.fill();
+    ctx.fillStyle = "#16181d";
+    ctx.beginPath(); ctx.arc(e.x + ex - 4, e.y + ey - 3, 1.6, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(e.x + ex + 4, e.y + ey - 3, 1.6, 0, 7); ctx.fill();
+    // antennae
+    ctx.strokeStyle = "#5d3b2c";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(e.x - 5, e.y - 12);
+    ctx.quadraticCurveTo(e.x - 8, e.y - 20, e.x - 4, e.y - 22);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(e.x + 5, e.y - 12);
+    ctx.quadraticCurveTo(e.x + 8, e.y - 20, e.x + 4, e.y - 22);
+    ctx.stroke();
+    if (!e.active) {
+      // dormant: little zzz
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.font = "bold 11px Montserrat, sans-serif";
+      ctx.fillText("z", e.x + 14, e.y - 12);
+    }
+  }
+
+  function drawChar() {
+    var c = state.char;
+    if (c.invuln > 0 && Math.floor(T * 10) % 2 === 0) return; // blink
+    ctx.fillStyle = "rgba(0,0,0,0.18)";
+    ctx.beginPath();
+    ctx.ellipse(c.x, c.y + 14, 14, 6, 0, 0, 7);
+    ctx.fill();
+    var swing = c.moving ? Math.sin(c.step) * 4 : 0;
+    ctx.fillStyle = "#3b3f33";
+    ctx.beginPath(); ctx.arc(c.x - 6, c.y + 11 + swing * 0.3, 4.5, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(c.x + 6, c.y + 11 - swing * 0.3, 4.5, 0, 7); ctx.fill();
     ctx.fillStyle = "#f2efe6";
     ctx.beginPath();
-    ctx.arc(char.x, char.y, 13, 0, 7);
+    ctx.arc(c.x, c.y, 13, 0, 7);
     ctx.fill();
     ctx.strokeStyle = "rgba(22,24,29,0.25)";
     ctx.lineWidth = 1.5;
     ctx.stroke();
-    // arms
     ctx.fillStyle = "#f2efe6";
-    ctx.beginPath(); ctx.arc(char.x - 13, char.y + 2, 4, 0, 7); ctx.fill();
-    ctx.beginPath(); ctx.arc(char.x + 13, char.y + 2, 4, 0, 7); ctx.fill();
-    // hard hat (InstaBuilt olive)
-    ctx.fillStyle = "#808336";
-    ctx.beginPath();
-    ctx.arc(char.x, char.y - 4, 12, Math.PI, 0);
-    ctx.fill();
-    ctx.fillRect(char.x - 14, char.y - 5, 28, 4);
+    ctx.beginPath(); ctx.arc(c.x - 13, c.y + 2, 4, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(c.x + 13, c.y + 2, 4, 0, 7); ctx.fill();
+    // hard hat
     ctx.fillStyle = "#6f7231";
     ctx.beginPath();
-    ctx.arc(char.x, char.y - 4, 12, Math.PI, 0);
+    ctx.arc(c.x, c.y - 4, 12, Math.PI, 0);
     ctx.fill();
+    ctx.fillRect(c.x - 14, c.y - 5, 28, 4);
     ctx.fillStyle = "#808336";
     ctx.beginPath();
-    ctx.arc(char.x, char.y - 4, 9, Math.PI, 0);
+    ctx.arc(c.x, c.y - 4, 9, Math.PI, 0);
     ctx.fill();
-    // eyes (facing direction)
-    var ex = Math.cos(char.dir) * 4;
-    var ey = Math.sin(char.dir) * 4;
+    var ex = Math.cos(c.dir) * 4;
+    var ey = Math.sin(c.dir) * 4;
     ctx.fillStyle = "#16181d";
-    ctx.beginPath(); ctx.arc(char.x + ex - 3, char.y + ey - 4, 1.7, 0, 7); ctx.fill();
-    ctx.beginPath(); ctx.arc(char.x + ex + 3, char.y + ey - 4, 1.7, 0, 7); ctx.fill();
-    // seeds carried on the back
-    for (var i = 0; i < Math.min(carrying, 3); i++) {
+    ctx.beginPath(); ctx.arc(c.x + ex - 3, c.y + ey - 4, 1.7, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(c.x + ex + 3, c.y + ey - 4, 1.7, 0, 7); ctx.fill();
+    for (var i = 0; i < Math.min(state.carrying, 3); i++) {
       ctx.fillStyle = "#d64545";
       ctx.beginPath();
-      ctx.arc(char.x - 10 + i * 5, char.y - 14 - (i % 2) * 3, 3, 0, 7);
+      ctx.arc(c.x - 10 + i * 5, c.y - 14 - (i % 2) * 3, 3, 0, 7);
       ctx.fill();
     }
   }
 
-  /* ---------- loop ---------- */
+  /* ---------- main loop ---------- */
   function update(dt) {
-    if (!running) return;
-    elapsed = (performance.now() - startTime) / 1000;
-    move(dt);
-    interact();
-    for (var i = 0; i < holes.length; i++) {
-      if (holes[i].planted) holes[i].age += dt / 2.2;
+    if (!state.running) return;
+    if (state.banner > 0) {
+      state.banner -= dt;
+      if (state.banner <= 0) document.getElementById("banner").classList.remove("show");
     }
+    state.elapsed += dt;
+    state.timeLeft -= dt;
+    if (state.timeLeft <= 0) { state.timeLeft = 0; gameOver("time"); return; }
+    movePlayer(dt);
+    updateEnemies(dt);
+    interact();
+    state.holes.forEach(function (h) { if (h.planted) h.age += dt / 2.2; });
     updateHud();
   }
 
   function render() {
     drawGround();
-    for (var i = 0; i < holes.length; i++) {
-      if (holes[i].planted) drawTree(holes[i]);
-      else drawHole(holes[i]);
-    }
-    for (var j = 0; j < seeds.length; j++) {
-      if (!seeds[j].taken) drawSeed(seeds[j]);
-    }
+    state.holes.forEach(function (h) { if (h.planted) drawTree(h); else drawHole(h); });
+    state.seeds.forEach(function (s) { if (!s.taken) drawSeed(s); });
+    state.enemies.forEach(drawEnemy);
     drawChar();
-  }
-
-  function fmt(sec) {
-    var m = Math.floor(sec / 60);
-    var s = Math.floor(sec % 60);
-    return m + ":" + (s < 10 ? "0" : "") + s;
-  }
-
-  function updateHud() {
-    document.getElementById("seedCount").textContent = carrying;
-    document.getElementById("plantedCount").textContent = planted;
-    document.getElementById("timer").textContent = fmt(elapsed);
-    document.getElementById("seedDot").style.background = carrying > 0 ? "#e05656" : "#97ab52";
   }
 
   var last = performance.now();
   function frame(now) {
     var dt = Math.min(0.033, (now - last) / 1000);
     last = now;
-    t += dt;
+    T += dt;
     update(dt);
     render();
     requestAnimationFrame(frame);
   }
 
-  /* ---------- start ---------- */
-  document.getElementById("startBtn").addEventListener("click", start);
-  document.getElementById("againBtn").addEventListener("click", start);
+  /* ---------- boot ---------- */
+  window.addEventListener("resize", fit);
+  document.getElementById("startBtn").addEventListener("click", startGame);
+  document.getElementById("nextBtn").addEventListener("click", nextLevel);
+  document.getElementById("retryBtn").addEventListener("click", function () {
+    document.getElementById("overOverlay").classList.add("hidden");
+    loadLevel(state.level);
+  });
+  document.getElementById("againBtn").addEventListener("click", function () {
+    document.getElementById("winOverlay").classList.add("hidden");
+    state.totals.seeds = 0;
+    state.totals.time = 0;
+    loadLevel(0);
+  });
+
+  fit();
   updateHud();
   requestAnimationFrame(frame);
 })();

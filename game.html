@@ -426,6 +426,49 @@
     b.addEventListener("pointercancel", function () { touchKeys[dir] = false; });
   });
 
+  /* ---------- easter egg: catch & drag the grass circles ---------- */
+  var drag = { on: false, patch: null, sx: 0, sy: 0, moved: 0 };
+  canvas.addEventListener("pointerdown", function (e) {
+    if (!state.running) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    for (var i = patches.length - 1; i >= 0; i--) {
+      var p = patches[i];
+      var dx = e.clientX - p.fx * W, dy = e.clientY - p.fy * H;
+      if (Math.hypot(dx, dy) < p.r) {
+        drag.on = true;
+        drag.patch = p;
+        drag.sx = e.clientX;
+        drag.sy = e.clientY;
+        drag.moved = 0;
+        p.caught = true;
+        try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+        return;
+      }
+    }
+  });
+  canvas.addEventListener("pointermove", function (e) {
+    if (!drag.on) return;
+    drag.moved = Math.max(drag.moved, Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy));
+    var p = drag.patch;
+    p.fx = Math.max(0.01, Math.min(0.99, e.clientX / W));
+    p.fy = Math.max(0.01, Math.min(0.99, e.clientY / H));
+  });
+  function endDrag() {
+    if (!drag.on) return;
+    var p = drag.patch;
+    p.caught = false;
+    if (drag.moved < 8) {
+      // plain left-click: random green intensity + a little pop
+      p.g = Math.round(80 + Math.random() * 105);
+      p.a = +(0.08 + Math.random() * 0.26).toFixed(3);
+      p.pop = 1;
+    }
+    drag.on = false;
+    drag.patch = null;
+  }
+  canvas.addEventListener("pointerup", endDrag);
+  canvas.addEventListener("pointercancel", endDrag);
+
   /* ---------- player ---------- */
   function movePlayer(dt) {
     var c = state.char;
@@ -643,7 +686,10 @@
   var patches = [];
   (function makePatches() {
     for (var i = 0; i < 26; i++) {
-      patches.push({ fx: Math.random(), fy: Math.random(), r: 40 + Math.random() * 90 });
+      patches.push({
+        fx: Math.random(), fy: Math.random(), r: 40 + Math.random() * 90,
+        g: 138, a: 0.16, pop: 0, caught: false
+      });
     }
   })();
 
@@ -652,9 +698,22 @@
     ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = "rgba(122, 138, 66, 0.16)";
     for (var i = 0; i < patches.length; i++) {
+      var p = patches[i];
+      if (p.pop > 0) p.pop = Math.max(0, p.pop - 0.05);
+      var rr = p.r * (1 + p.pop * 0.35);
+      ctx.fillStyle = "rgba(122, " + p.g + ", 66, " + p.a + ")";
       ctx.beginPath();
-      ctx.arc(patches[i].fx * W, patches[i].fy * H, patches[i].r, 0, 7);
+      ctx.arc(p.fx * W, p.fy * H, rr, 0, 7);
       ctx.fill();
+      if (p.caught) {
+        ctx.strokeStyle = "rgba(19, 22, 16, 0.5)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.arc(p.fx * W, p.fy * H, rr + 7, 0, 7);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
     }
     ctx.strokeStyle = "rgba(19, 22, 16, 0.25)";
     ctx.lineWidth = 5;

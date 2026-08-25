@@ -111,7 +111,7 @@
     if (open) {
       if (!greeted) {
         greeted = true;
-        addMsg("bot", "Hi! Welcome to InstaBuilt customer support. Ask me about Pop-Up sizes, build times, sustainability, or becoming a partner.");
+        addMsg("bot", "Hi! Welcome to InstaBuilt customer support. Ask me about our homes, build times, sustainability, partnerships — or anything else about the company.");
       }
       if (input) input.focus();
     }
@@ -137,19 +137,31 @@
 
   function reply(inputText) {
     var q = inputText.toLowerCase();
-    if (/(pop-?up|size|price|cost|m²|m2|sqm|how much)/.test(q))
-      return "Our Pop-Up homes come in three sizes — 28 m², 52 m² and 104 m². You can reserve one at instabuilt.com/order-your-popup/ or request an offer at instabuilt.com/get-your-offer.";
-    if (/(fast|quick|how long|time|75|speed|days)/.test(q))
-      return "Very fast. Modular construction cuts build time by up to 75% — components are factory-made, so most homes assemble on site in days, not months.";
-    if (/(waste|green|sustain|eco|environment|kfw|recycl)/.test(q))
+    if (/(pop-?up|28 m|52 m|104 m|tiny house|container home)/.test(q))
+      return "Our Pop-Up homes come in three sizes — 28 m², 52 m² and 104 m². They arrive factory-finished and assemble in days. You can reserve one at instabuilt.com/order-your-popup/.";
+    if (/(price|cost|how much|budget|quote|offer|pricing)/.test(q))
+      return "Pricing depends on the product, size and project. Pop-Ups come in three sizes (28 / 52 / 104 m²); multistory and signature projects are quoted individually. Request a free offer at instabuilt.com/get-your-offer and we'll come back with numbers.";
+    if (/(fast|quick|how long|time|75|speed|days|deliver)/.test(q))
+      return "Speed is our core advantage: modular construction cuts build time by up to 75% — components are factory-made, so most homes assemble on site in days, not months.";
+    if (/(waste|green|sustain|eco|environment|kfw|recycl|climate)/.test(q))
       return "Sustainability is the core of InstaBuilt: offsite construction removes waste before it exists, and we build to the KfW40 standard with 100% eco, bio & green materials.";
     if (/(partner|franchise|land|invest|develop|license)/.test(q))
       return "We partner across the EU and U.S. — Germany, Switzerland, Austria, Benelux and Texas. Landowners can become developers overnight: your land, our production. See the About Us page or start at instabuilt.com/get-your-offer.";
-    if (/(human|person|contact|call|email|talk|real|agent)/.test(q))
+    if (/(material|wood|wall|panel|insulat|fabricat|rohbau)/.test(q))
+      return "We use precision-engineered panel systems — eco-friendly wooden walls, factory-built to KfW40 standards. Panels (structural Rohbau shells) and modules are both produced in our own factory, then assembled on site.";
+    if (/(multistory|apartment|senior|micro|traditional|signature|what do you build|house|home|product)/.test(q))
+      return "We build Pop-Up homes, multistory multifamily, senior housing, micro apartments, traditional homes and signature homes — plus panelized and modular systems for developers. Browse them all on the homepage!";
+    if (/(event|expo|exhibition|davos|fair|where can i see|meet)/.test(q))
+      return "We exhibit across Europe and the U.S. — EXPO REAL in Munich, House of Kosova in Davos, Berlin Blockchain Week, Crypto Valley in Zug, Blueprint Las Vegas and the Housing Innovation Summit. See the Events section on the homepage.";
+    if (/(who|found|history|company|team|about|family|pllana|story)/.test(q))
+      return "InstaBuilt was founded by Besnik Pllana under the Pllana Capital umbrella and remains family-led. Our 140,000 m² plot includes a factory and a 5,700 m² innovation center. Meet the team on the About Us page!";
+    if (/(where|location|germany|switzerland|austria|texas|benelux|market|country)/.test(q))
+      return "We operate in Germany, Switzerland, Austria, Benelux and the U.S. (Texas), partnering with permitted projects across the EU and U.S.";
+    if (/(human|person|contact|call|email|talk|real|agent|phone)/.test(q))
       return "The fastest way to reach our team is instabuilt.com/get-your-offer — or visit instabuilt.com to schedule a meeting.";
     if (/(hello|hi|hey|help|what can you)/.test(q))
-      return "Hello! I can help with Pop-Up sizes, build times, sustainability and partnerships. Pick a quick question below or type your own.";
-    return "Good question! I can help with Pop-Up sizes (28 / 52 / 104 m²), build times (up to 75% faster), sustainability, and partnerships. For anything else, our team is one click away at instabuilt.com/get-your-offer.";
+      return "Hello! I can help with our products, build times, sustainability, partnerships and markets. Pick a quick question below or type your own.";
+    return "I can help with: our products (Pop-Ups, multistory, traditional and signature homes), build times, sustainability, partnerships and markets. Pick a quick question below, or our team is one click away at instabuilt.com/get-your-offer.";
   }
 
   function ask(text) {

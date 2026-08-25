@@ -307,6 +307,7 @@
     carrying: 0, planted: 0, hp: 3, maxHp: 3,
     timeLeft: 0, elapsed: 0,
     running: false, activated: false, banner: 0,
+    celebrate: 0, celebrateX: 0, celebrateY: 0,
     totals: { seeds: 0, time: 0 }
   };
 
@@ -386,6 +387,7 @@
     state.activated = false;
     state.running = true;
     state.banner = 2.4;
+    state.celebrate = 0;
     state.char = { x: W * 0.5, y: H - 70, r: 15, dir: -Math.PI / 2, moving: false, step: 0, invuln: 0, kbx: 0, kby: 0, kbt: 0 };
 
     rescale();
@@ -427,7 +429,7 @@
   });
 
   /* ---------- easter egg: catch & drag the grass circles ---------- */
-  var drag = { on: false, patch: null, sx: 0, sy: 0, moved: 0 };
+  var drag = { on: false, patch: null, sx: 0, sy: 0, moved: 0, tx: 0, ty: 0 };
   canvas.addEventListener("pointerdown", function (e) {
     if (!state.running) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
@@ -440,6 +442,8 @@
         drag.sx = e.clientX;
         drag.sy = e.clientY;
         drag.moved = 0;
+        drag.tx = p.fx;
+        drag.ty = p.fy;
         p.caught = true;
         try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
         return;
@@ -449,9 +453,8 @@
   canvas.addEventListener("pointermove", function (e) {
     if (!drag.on) return;
     drag.moved = Math.max(drag.moved, Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy));
-    var p = drag.patch;
-    p.fx = Math.max(0.01, Math.min(0.99, e.clientX / W));
-    p.fy = Math.max(0.01, Math.min(0.99, e.clientY / H));
+    drag.tx = Math.max(0.01, Math.min(0.99, e.clientX / W));
+    drag.ty = Math.max(0.01, Math.min(0.99, e.clientY / H));
   });
   function endDrag() {
     if (!drag.on) return;
@@ -608,14 +611,17 @@
           state.activated = true;
           state.enemies.forEach(function (e) { e.active = true; });
         }
-        if (state.planted >= LEVELS[state.level].seeds) levelComplete();
+        if (state.planted >= LEVELS[state.level].seeds) levelComplete(h.x, h.y);
       }
     }
   }
 
   /* ---------- flow ---------- */
-  function levelComplete() {
+  function levelComplete(x, y) {
     state.running = false;
+    state.celebrate = 1.0; // "ding" animation plays before the level screen
+    state.celebrateX = x;
+    state.celebrateY = y;
     var cfg = LEVELS[state.level];
     state.totals.seeds += state.planted;
     state.totals.time += state.elapsed;
@@ -623,11 +629,10 @@
     document.getElementById("lvTime").textContent = fmt(state.elapsed);
     document.getElementById("lvSeeds").textContent = state.planted;
     document.getElementById("lvHp").textContent = state.hp;
-    document.getElementById("levelOverlay").classList.remove("hidden");
     if (state.level >= LEVELS.length - 1) {
       document.getElementById("nextBtn").textContent = "Finish the community 🍒";
     } else {
-      document.getElementById("nextBtn").textContent = "Next field →";
+      document.getElementById("nextBtn").textContent = "Next level →";
     }
   }
 
@@ -875,7 +880,17 @@
 
   /* ---------- main loop ---------- */
   function update(dt) {
-    if (!state.running) return;
+    if (!state.running) {
+      // the level-complete "ding" keeps playing while the game is paused
+      if (state.celebrate > 0) {
+        state.celebrate -= dt;
+        if (state.celebrate <= 0) {
+          state.celebrate = 0;
+          document.getElementById("levelOverlay").classList.remove("hidden");
+        }
+      }
+      return;
+    }
     if (state.banner > 0) {
       state.banner -= dt;
       if (state.banner <= 0) document.getElementById("banner").classList.remove("show");
@@ -896,6 +911,39 @@
     state.seeds.forEach(function (s) { if (!s.taken) drawSeed(s); });
     state.enemies.forEach(drawEnemy);
     drawChar();
+    drawCelebrate();
+  }
+
+  function drawCelebrate() {
+    if (state.celebrate <= 0) return;
+    var p = 1 - state.celebrate; // 0 → 1 over the ding
+    var x = state.celebrateX, y = state.celebrateY;
+    ctx.strokeStyle = "rgba(217, 224, 168, " + (0.9 * (1 - p)).toFixed(3) + ")";
+    ctx.lineWidth = 4 * (1 - p) + 1;
+    ctx.beginPath();
+    ctx.arc(x, y, 10 + p * 90, 0, 7);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(224, 86, 86, " + (0.7 * (1 - p)).toFixed(3) + ")";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(x, y, 30 + p * 120, 0, 7);
+    ctx.stroke();
+    for (var i = 0; i < 6; i++) {
+      var a = (i / 6) * Math.PI * 2;
+      var r = 40 + p * 60;
+      ctx.fillStyle = "rgba(217, 224, 168, " + (1 - p).toFixed(3) + ")";
+      ctx.beginPath();
+      ctx.arc(x + Math.cos(a) * r, y + Math.sin(a) * r, 3, 0, 7);
+      ctx.fill();
+    }
+    ctx.fillStyle = "#f4f2ed";
+    ctx.font = "bold 26px Montserrat, sans-serif";
+    ctx.textAlign = "center";
+    ctx.shadowColor = "rgba(0,0,0,0.35)";
+    ctx.shadowBlur = 6;
+    ctx.fillText("Ding!", x, y - 30 - p * 30);
+    ctx.shadowBlur = 0;
+    ctx.textAlign = "start";
   }
 
   var last = performance.now();
@@ -905,6 +953,12 @@
     T += dt;
     try {
       update(dt);
+      // easter egg: viscous follow — smooth trailing, no dead delay
+      if (drag.on && drag.patch) {
+        var k = 1 - Math.exp(-dt * 9);
+        drag.patch.fx += (drag.tx - drag.patch.fx) * k;
+        drag.patch.fy += (drag.ty - drag.patch.fy) * k;
+      }
       render();
     } catch (err) {
       // never let one bad frame kill the game loop

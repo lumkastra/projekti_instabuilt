@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cherry Seed Mission — InstaBuilt Game</title>
+<meta name="description" content="Help Pip the builder find cherry seeds and plant them to grow an InstaBuilt Cherry Community.">
+<link rel="icon" type="image/png" href="images/instabuilt-thumbnail.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --olive: #808336;
+    --olive-deep: #5f6327;
+    --olive-btn: #6f7231;
+    --olive-btn-hover: #5f6228;
+    --paper: #f4f2ed;
+    --ink: #16181d;
+    --muted: #63676e;
+    --dark: #131610;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Montserrat", "Segoe UI", system-ui, sans-serif;
+    background: var(--dark);
+    color: var(--paper);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.25rem 1rem 2.5rem;
+  }
+  .game-head {
+    width: 100%;
+    max-width: 960px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .game-head .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--paper);
+    text-decoration: none;
+  }
+  .game-head img { width: 36px; height: 36px; border-radius: 0; }
+  .game-head .brand span { font-weight: 700; font-size: 1.15rem; letter-spacing: -0.01em; }
+  .game-head .brand em { font-style: italic; color: #d9e0a8; }
+  .back-link {
+    color: rgba(244, 242, 237, 0.8);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid rgba(244, 242, 237, 0.25);
+    border-radius: 999px;
+    padding: 0.45rem 1rem;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  .back-link:hover { border-color: #d9e0a8; color: #d9e0a8; }
+
+  .hud {
+    width: 100%;
+    max-width: 960px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .hud-chip {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 600;
+    font-size: 0.82rem;
+    letter-spacing: 0.06em;
+    background: var(--olive-btn);
+    color: #fff;
+    border-radius: 999px;
+    padding: 0.45rem 1.1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+  .hud-chip .dot { width: 10px; height: 10px; border-radius: 50%; background: #e05656; display: inline-block; }
+  .hud-chip .dot.planted { background: #97ab52; }
+  .hud-hint { color: rgba(244, 242, 237, 0.65); font-size: 0.8rem; font-weight: 500; }
+
+  .canvas-shell {
+    position: relative;
+    width: 100%;
+    max-width: 960px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 30px 60px -25px rgba(0, 0, 0, 0.7);
+    border: 1px solid rgba(128, 131, 54, 0.45);
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    touch-action: none;
+    background: #dde3c0;
+  }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(19, 22, 16, 0.88);
+    backdrop-filter: blur(3px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 1.5rem;
+    gap: 0.9rem;
+  }
+  .overlay.hidden { display: none; }
+  .overlay .kicker {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 600;
+    font-size: 0.7rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #b9c185;
+  }
+  .overlay h1 {
+    font-size: clamp(1.6rem, 4.5vw, 2.6rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .overlay h1 em { font-style: italic; color: #d9e0a8; }
+  .overlay p { color: rgba(244, 242, 237, 0.78); max-width: 46ch; font-size: 0.95rem; line-height: 1.6; }
+  .overlay .stats { display: flex; gap: 1.4rem; margin: 0.4rem 0; flex-wrap: wrap; justify-content: center; }
+  .overlay .stats div { display: flex; flex-direction: column; align-items: center; }
+  .overlay .stats b { font-size: 1.5rem; font-weight: 700; color: #d9e0a8; }
+  .overlay .stats span { font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(244, 242, 237, 0.6); }
+  .btn {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border: none;
+    border-radius: 4px;
+    padding: 0.8rem 1.9rem;
+    background: var(--olive-btn);
+    color: #fff;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+  .btn:hover { background: var(--olive-btn-hover); transform: translateY(-2px); }
+  .btn.ghost { background: transparent; border: 1px solid rgba(244, 242, 237, 0.35); }
+  .btn.ghost:hover { background: rgba(244, 242, 237, 0.08); }
+  .btn-row { display: flex; gap: 0.8rem; flex-wrap: wrap; justify-content: center; }
+
+  .touch-pad {
+    display: none;
+    width: 100%;
+    max-width: 960px;
+    margin-top: 1rem;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+  .touch-pad .pad {
+    display: grid;
+    grid-template-columns: repeat(3, 52px);
+    grid-template-rows: repeat(2, 52px);
+    gap: 6px;
+  }
+  .touch-pad button {
+    width: 52px; height: 52px;
+    border-radius: 10px;
+    border: 1px solid rgba(244, 242, 237, 0.3);
+    background: rgba(128, 131, 54, 0.35);
+    color: #fff;
+    font-size: 1.3rem;
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .touch-pad button:active { background: var(--olive-btn); }
+  .touch-pad .pad .u { grid-column: 2; grid-row: 1; }
+  .touch-pad .pad .l { grid-column: 1; grid-row: 2; }
+  .touch-pad .pad .d { grid-column: 2; grid-row: 2; }
+  .touch-pad .pad .r { grid-column: 3; grid-row: 2; }
+
+  @media (pointer: coarse), (max-width: 720px) {
+    .touch-pad { display: flex; }
+    .hud-hint { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="game-head">
+  <a class="brand" href="index.html">
+    <img src="images/instabuilt-thumbnail.png" alt="InstaBuilt logo">
+    <span>Insta<em>Built</em></span>
+  </a>
+  <a class="back-link" href="index.html">← Back to the site</a>
+</header>
+
+<div class="hud">
+  <span class="hud-chip"><span class="dot" id="seedDot"></span> Seeds: <span id="seedCount">0</span> / 8</span>
+  <span class="hud-chip">Planted: <span id="plantedCount">0</span> / 8</span>
+  <span class="hud-hint">WASD / arrow keys to move · collect seeds · plant them in the spots</span>
+  <span class="hud-chip">Time: <span id="timer">0:00</span></span>
+</div>
+
+<div class="canvas-shell">
+  <canvas id="game" width="960" height="600"></canvas>
+
+  <div class="overlay" id="startOverlay">
+    <p class="kicker">InstaBuilt · Cherry Communities</p>
+    <h1>Cherry <em>Seed</em> Mission</h1>
+    <p>Help <strong>Pip the builder</strong> find the cherry seeds scattered across the field and plant them in the empty spots. Plant all 8 and a brand-new Cherry Community starts growing!</p>
+    <p class="kicker" style="color:rgba(244,242,237,.55)">Move with WASD or arrow keys · on touch use the pad below</p>
+    <button class="btn" id="startBtn">Start planting</button>
+  </div>
+
+  <div class="overlay hidden" id="winOverlay">
+    <p class="kicker">Cherry Communities</p>
+    <h1>A community is <em>growing!</em></h1>
+    <p>Pip planted all 8 cherry seeds. In a few seasons, this will be a full InstaBuilt Cherry Community — sustainable, connected, and green.</p>
+    <div class="stats">
+      <div><b id="winTime">0:00</b><span>Time</span></div>
+      <div><b>8 / 8</b><span>Seeds planted</span></div>
+      <div><b id="winSteps">0</b><span>Steps</span></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="againBtn">Play again</button>
+      <a class="btn ghost" href="index.html">Back to the site</a>
+    </div>
+  </div>
+</div>
+
+<div class="touch-pad">
+  <span></span>
+  <div class="pad">
+    <button class="u" data-dir="up" aria-label="Up">▲</button>
+    <button class="l" data-dir="left" aria-label="Left">◀</button>
+    <button class="d" data-dir="down" aria-label="Down">▼</button>
+    <button class="r" data-dir="right" aria-label="Right">▶</button>
+  </div>
+  <span></span>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var canvas = document.getElementById("game");
+  var ctx = canvas.getContext("2d");
+  var W = 960, H = 600;
+  var TARGET = 8;
+
+  var holes = [
+    { x: 170, y: 150 }, { x: 420, y: 105 }, { x: 700, y: 155 }, { x: 875, y: 290 },
+    { x: 545, y: 330 }, { x: 250, y: 430 }, { x: 620, y: 480 }, { x: 120, y: 310 }
+  ];
+  holes.forEach(function (h) { h.planted = false; h.age = 0; h.born = 0; });
+
+  var char = { x: 480, y: 540, r: 15, dir: 0, moving: false, step: 0 };
+  var seeds = [];
+  var carrying = 0;
+  var planted = 0;
+  var steps = 0;
+  var startTime = 0;
+  var elapsed = 0;
+  var running = false;
+  var t = 0;
+
+  var keys = {};
+  var touchKeys = { up: false, down: false, left: false, right: false };
+
+  /* ---------- setup ---------- */
+  function resetSeeds() {
+    seeds = [];
+    var attempts = 0;
+    while (seeds.length < TARGET && attempts < 500) {
+      attempts++;
+      var s = {
+        x: 60 + Math.random() * (W - 120),
+        y: 70 + Math.random() * (H - 130),
+        taken: false,
+        seed: Math.random() * 10
+      };
+      var ok = true;
+      for (var i = 0; i < seeds.length; i++) {
+        var d = Math.hypot(seeds[i].x - s.x, seeds[i].y - s.y);
+        if (d < 55) { ok = false; break; }
+      }
+      if (ok) seeds.push(s);
+    }
+    // guarantee the full set even in a crowded corner
+    while (seeds.length < TARGET) {
+      seeds.push({ x: 60 + Math.random() * (W - 120), y: 70 + Math.random() * (H - 130), taken: false, seed: Math.random() * 10 });
+    }
+  }
+
+  function start() {
+    resetSeeds();
+    holes.forEach(function (h) { h.planted = false; h.age = 0; });
+    carrying = 0;
+    planted = 0;
+    steps = 0;
+    elapsed = 0;
+    char.x = 480; char.y = 540; char.dir = 0; char.moving = false;
+    startTime = performance.now();
+    running = true;
+    document.getElementById("startOverlay").classList.add("hidden");
+    document.getElementById("winOverlay").classList.add("hidden");
+    updateHud();
+  }
+
+  /* ---------- input ---------- */
+  window.addEventListener("keydown", function (e) {
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].indexOf(e.key) !== -1) e.preventDefault();
+    keys[e.key.toLowerCase()] = true;
+    keys["arrow" + e.key.toLowerCase().replace("arrow", "")] = true;
+  });
+  window.addEventListener("keyup", function (e) {
+    keys[e.key.toLowerCase()] = false;
+    keys["arrow" + e.key.toLowerCase().replace("arrow", "")] = false;
+  });
+
+  var padBtns = document.querySelectorAll(".touch-pad button");
+  padBtns.forEach(function (b) {
+    var dir = b.getAttribute("data-dir");
+    function on() { touchKeys[dir] = true; }
+    function off() { touchKeys[dir] = false; }
+    b.addEventListener("pointerdown", on);
+    b.addEventListener("pointerup", off);
+    b.addEventListener("pointerleave", off);
+    b.addEventListener("pointercancel", off);
+  });
+
+  /* ---------- movement ---------- */
+  function move(dt) {
+    var up = (keys["w"] || keys["arrowup"]) || touchKeys.up;
+    var down = (keys["s"] || keys["arrowdown"]) || touchKeys.down;
+    var left = (keys["a"] || keys["arrowleft"]) || touchKeys.left;
+    var right = (keys["d"] || keys["arrowright"]) || touchKeys.right;
+    var vx = (right ? 1 : 0) - (left ? 1 : 0);
+    var vy = (down ? 1 : 0) - (up ? 1 : 0);
+    char.moving = vx !== 0 || vy !== 0;
+    if (char.moving) {
+      steps++;
+      var len = Math.hypot(vx, vy);
+      vx /= len; vy /= len;
+      var speed = 235;
+      char.x += vx * speed * dt;
+      char.y += vy * speed * dt;
+      char.dir = Math.atan2(vy, vx);
+      char.step += dt * 9;
+    }
+    char.x = Math.max(char.r + 6, Math.min(W - char.r - 6, char.x));
+    char.y = Math.max(char.r + 6, Math.min(H - char.r - 6, char.y));
+  }
+
+  /* ---------- interactions ---------- */
+  function interact() {
+    for (var i = 0; i < seeds.length; i++) {
+      var s = seeds[i];
+      if (s.taken) continue;
+      if (Math.hypot(s.x - char.x, s.y - char.y) < 28) {
+        s.taken = true;
+        carrying++;
+      }
+    }
+    for (var j = 0; j < holes.length; j++) {
+      var h = holes[j];
+      if (h.planted || carrying === 0) continue;
+      if (Math.hypot(h.x - char.x, h.y - char.y) < 30) {
+        h.planted = true;
+        h.age = 0;
+        carrying--;
+        planted++;
+        if (planted === TARGET) win();
+      }
+    }
+  }
+
+  function win() {
+    running = false;
+    document.getElementById("winTime").textContent = fmt(elapsed);
+    document.getElementById("winSteps").textContent = steps;
+    document.getElementById("winOverlay").classList.remove("hidden");
+  }
+
+  /* ---------- drawing ---------- */
+  var grassPatches = [];
+  for (var p = 0; p < 26; p++) {
+    grassPatches.push({ x: Math.random() * W, y: Math.random() * H, r: 40 + Math.random() * 90 });
+  }
+
+  function drawGround() {
+    ctx.fillStyle = "#dde3c0";
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "rgba(122, 138, 66, 0.16)";
+    for (var i = 0; i < grassPatches.length; i++) {
+      ctx.beginPath();
+      ctx.arc(grassPatches[i].x, grassPatches[i].y, grassPatches[i].r, 0, 7);
+      ctx.fill();
+    }
+    // soft vignette border
+    ctx.strokeStyle = "rgba(19, 22, 16, 0.25)";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(3, 3, W - 6, H - 6);
+  }
+
+  function drawHole(h) {
+    ctx.fillStyle = "#5a4632";
+    ctx.beginPath();
+    ctx.ellipse(h.x, h.y, 15, 9, 0, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = "#3d2f20";
+    ctx.beginPath();
+    ctx.ellipse(h.x, h.y - 1, 10, 5.5, 0, 0, 7);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(61, 47, 32, 0.5)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(h.x, h.y, 15, 9, 0, 0, 7);
+    ctx.stroke();
+  }
+
+  function drawTree(h) {
+    var age = Math.min(1, h.age);
+    var s = 0.35 + 0.65 * age;
+    var grow = Math.min(1, h.age * 1.4);
+    // trunk
+    ctx.fillStyle = "#8a6a45";
+    ctx.fillRect(h.x - 4 * s, h.y - 16 * s, 8 * s, 16 * s);
+    // canopy
+    ctx.fillStyle = "#7c8f3d";
+    ctx.beginPath();
+    ctx.arc(h.x, h.y - 22 * s, 17 * s, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = "#97ab52";
+    ctx.beginPath();
+    ctx.arc(h.x - 6 * s, h.y - 27 * s, 11 * s, 0, 7);
+    ctx.fill();
+    // cherries on the tree once fully grown
+    if (grow === 1) {
+      ctx.fillStyle = "#d64545";
+      ctx.beginPath(); ctx.arc(h.x - 8, h.y - 30, 3.2, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(h.x + 7, h.y - 25, 3.2, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(h.x + 2, h.y - 35, 2.6, 0, 7); ctx.fill();
+    }
+  }
+
+  function drawSeed(s) {
+    var bob = Math.sin(t * 3 + s.seed) * 2;
+    var y = s.y + bob;
+    ctx.fillStyle = "#4e6b2f";
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(s.x, y - 6);
+    ctx.quadraticCurveTo(s.x + 4, y - 12, s.x + 8, y - 13);
+    ctx.stroke();
+    ctx.fillStyle = "#d64545";
+    ctx.beginPath();
+    ctx.arc(s.x, y, 7, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.beginPath();
+    ctx.arc(s.x - 2.4, y - 2.4, 2, 0, 7);
+    ctx.fill();
+  }
+
+  function drawChar() {
+    // shadow
+    ctx.fillStyle = "rgba(0,0,0,0.18)";
+    ctx.beginPath();
+    ctx.ellipse(char.x, char.y + 14, 14, 6, 0, 0, 7);
+    ctx.fill();
+    // feet
+    var swing = char.moving ? Math.sin(char.step) * 4 : 0;
+    ctx.fillStyle = "#3b3f33";
+    ctx.beginPath(); ctx.arc(char.x - 6, char.y + 11 + swing * 0.3, 4.5, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(char.x + 6, char.y + 11 - swing * 0.3, 4.5, 0, 7); ctx.fill();
+    // body
+    ctx.fillStyle = "#f2efe6";
+    ctx.beginPath();
+    ctx.arc(char.x, char.y, 13, 0, 7);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(22,24,29,0.25)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // arms
+    ctx.fillStyle = "#f2efe6";
+    ctx.beginPath(); ctx.arc(char.x - 13, char.y + 2, 4, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(char.x + 13, char.y + 2, 4, 0, 7); ctx.fill();
+    // hard hat (InstaBuilt olive)
+    ctx.fillStyle = "#808336";
+    ctx.beginPath();
+    ctx.arc(char.x, char.y - 4, 12, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(char.x - 14, char.y - 5, 28, 4);
+    ctx.fillStyle = "#6f7231";
+    ctx.beginPath();
+    ctx.arc(char.x, char.y - 4, 12, Math.PI, 0);
+    ctx.fill();
+    ctx.fillStyle = "#808336";
+    ctx.beginPath();
+    ctx.arc(char.x, char.y - 4, 9, Math.PI, 0);
+    ctx.fill();
+    // eyes (facing direction)
+    var ex = Math.cos(char.dir) * 4;
+    var ey = Math.sin(char.dir) * 4;
+    ctx.fillStyle = "#16181d";
+    ctx.beginPath(); ctx.arc(char.x + ex - 3, char.y + ey - 4, 1.7, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(char.x + ex + 3, char.y + ey - 4, 1.7, 0, 7); ctx.fill();
+    // seeds carried on the back
+    for (var i = 0; i < Math.min(carrying, 3); i++) {
+      ctx.fillStyle = "#d64545";
+      ctx.beginPath();
+      ctx.arc(char.x - 10 + i * 5, char.y - 14 - (i % 2) * 3, 3, 0, 7);
+      ctx.fill();
+    }
+  }
+
+  /* ---------- loop ---------- */
+  function update(dt) {
+    if (!running) return;
+    elapsed = (performance.now() - startTime) / 1000;
+    move(dt);
+    interact();
+    for (var i = 0; i < holes.length; i++) {
+      if (holes[i].planted) holes[i].age += dt / 2.2;
+    }
+    updateHud();
+  }
+
+  function render() {
+    drawGround();
+    for (var i = 0; i < holes.length; i++) {
+      if (holes[i].planted) drawTree(holes[i]);
+      else drawHole(holes[i]);
+    }
+    for (var j = 0; j < seeds.length; j++) {
+      if (!seeds[j].taken) drawSeed(seeds[j]);
+    }
+    drawChar();
+  }
+
+  function fmt(sec) {
+    var m = Math.floor(sec / 60);
+    var s = Math.floor(sec % 60);
+    return m + ":" + (s < 10 ? "0" : "") + s;
+  }
+
+  function updateHud() {
+    document.getElementById("seedCount").textContent = carrying;
+    document.getElementById("plantedCount").textContent = planted;
+    document.getElementById("timer").textContent = fmt(elapsed);
+    document.getElementById("seedDot").style.background = carrying > 0 ? "#e05656" : "#97ab52";
+  }
+
+  var last = performance.now();
+  function frame(now) {
+    var dt = Math.min(0.033, (now - last) / 1000);
+    last = now;
+    t += dt;
+    update(dt);
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------- start ---------- */
+  document.getElementById("startBtn").addEventListener("click", start);
+  document.getElementById("againBtn").addEventListener("click", start);
+  updateHud();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

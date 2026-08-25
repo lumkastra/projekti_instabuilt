@@ -830,6 +830,7 @@
 
   function drawChar() {
     var c = state.char;
+    if (!c) return; // not started yet — nothing to draw
     if (c.invuln > 0 && Math.floor(T * 10) % 2 === 0) return; // blink
     ctx.fillStyle = "rgba(0,0,0,0.18)";
     ctx.beginPath();
@@ -902,8 +903,13 @@
     var dt = Math.min(0.033, (now - last) / 1000);
     last = now;
     T += dt;
-    update(dt);
-    render();
+    try {
+      update(dt);
+      render();
+    } catch (err) {
+      // never let one bad frame kill the game loop
+      if (window.console && console.error) console.error("frame error:", err);
+    }
     requestAnimationFrame(frame);
   }
 

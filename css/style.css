@@ -21,9 +21,9 @@
   --dark-line: rgba(244, 242, 237, 0.14);
   --dark-muted: #9aa0a8;
 
-  --font-display: "Fraunces", "Georgia", serif;
-  --font-body: "Manrope", "Segoe UI", system-ui, sans-serif;
-  --font-mono: "Space Mono", "SFMono-Regular", monospace;
+  --font-display: "Montserrat", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Montserrat", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Montserrat", "Segoe UI", system-ui, sans-serif;
 
   --radius: 4px;
   --shadow: 0 18px 40px -18px rgba(22, 24, 29, 0.35);
@@ -44,6 +44,8 @@ body {
   color: var(--ink);
   line-height: 1.6;
   font-size: 16.5px;
+  font-weight: 450;
+  font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
@@ -67,14 +69,15 @@ ul { list-style: none; }
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--accent-deep);
+  font-weight: 600;
   margin-bottom: 1.1rem;
 }
 
 h1, h2, h3 {
   font-family: var(--font-display);
-  font-weight: 500;
+  font-weight: 650;
   line-height: 1.06;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
   text-wrap: balance;
 }
 
@@ -192,7 +195,7 @@ h1 em, h2 em, h3 em, blockquote em {
 .brand-name {
   font-family: var(--font-display);
   font-size: 1.45rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.01em;
 }
 
@@ -331,7 +334,7 @@ h1 em, h2 em, h3 em, blockquote em {
 
 .hero h1 {
   font-size: clamp(3rem, 8vw, 6.8rem);
-  font-weight: 500;
+  font-weight: 700;
   color: #fff;
   max-width: 15ch;
 }
@@ -639,7 +642,7 @@ h1 em, h2 em, h3 em, blockquote em {
   font-family: var(--font-display);
   font-size: clamp(2.2rem, 5.4vw, 4.4rem);
   line-height: 1.12;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.015em;
 }
 
@@ -1073,4 +1076,24 @@ h1 em, h2 em, h3 em, blockquote em {
     transition-duration: 0.001s !important;
   }
   .reveal { opacity: 1; transform: none; }
+}
+
+/* ---------- Montserrat weight polish ---------- */
+.eyebrow,
+.footer-head,
+.project-tag,
+.member-role,
+.event-loc,
+.tl-label,
+.step-num,
+.stat-label,
+.hero-size,
+.hero-size-label,
+.adv-strip span,
+.market-chips span,
+.partner-num,
+.method-num,
+.footer-tag,
+.footer-col a {
+  font-weight: 600;
 }

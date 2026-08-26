@@ -416,6 +416,9 @@
 
   var W = 2200, H = 1600;      // world (surface) size
   var CW = W, CH = H;          // cave: same size as the surface map
+  var SAND_Y = 1360;           // beach starts here
+  var SEA_Y = 1420;            // water starts here
+  var SHIP_X = 1150, SHIP_Y = 1510;  // decorative ship
   var VW = 960, VH = 700;      // viewport (css px)
   var DPR = 1;
 
@@ -474,7 +477,7 @@
     while (state.trees.length < 14 && tries < 400) {
       tries++;
       var x = 150 + Math.random() * (W - 300);
-      var y = 150 + Math.random() * (H - 300);
+      var y = 150 + Math.random() * (SAND_Y - 200); // no trees on the beach/sea
       if (Math.hypot(x - state.player.x, y - state.player.y) < 320) continue;
       if (Math.hypot(x - state.npc.x, y - state.npc.y) < 260) continue;
       if (Math.hypot(x - state.pad.x, y - state.pad.y) < 260) continue;
@@ -993,7 +996,7 @@
   var patches = [];
   (function makePatches() {
     for (var i = 0; i < 30; i++) {
-      patches.push({ fx: Math.random(), fy: Math.random(), r: 50 + Math.random() * 110, g: 138, a: 0.16, pop: 0, caught: false });
+      patches.push({ fx: Math.random(), fy: Math.random() * (SAND_Y / H - 0.06), r: 50 + Math.random() * 110, g: 138, a: 0.16, pop: 0, caught: false });
     }
   })();
 
@@ -1001,6 +1004,7 @@
   var grassTints = [];      // soft large colour patches on the surface
   var grassSpeck = [];      // tiny grass blades / noise
   var flowers = [];         // little flowers
+  var sandSpeck = [];       // sand grain noise on the beach
   var pathPoints = [];      // dirt path through the world
   var pathSpeck = [];       // pebbles on the dirt path
   var caveWalls = [];       // rocky wall rocks around the cave
@@ -1009,23 +1013,30 @@
   var cavePebbles = [];     // floor stones in the cave
   var crystals = [];        // glowing crystal clusters (ambient)
   var torchSpots = [];      // warm light pools in the cave
+  var caveSparkles = [];    // twinkling dust in the cave
 
   (function makeDecor() {
     var i, j;
+    var LAND = SAND_Y / H - 0.06; // decor stays above the beach
     for (i = 0; i < 34; i++) {
       grassTints.push({
-        fx: Math.random(), fy: Math.random(),
+        fx: Math.random(), fy: Math.random() * LAND,
         rx: 90 + Math.random() * 190, ry: 60 + Math.random() * 130,
         c: Math.random() < 0.5 ? "rgba(122, 138, 66, 0.10)" : "rgba(212, 222, 168, 0.16)"
       });
     }
     var greens = ["#9aa86b", "#aebb82", "#c2cd96", "#8fa060", "#b3c18a"];
     for (i = 0; i < 260; i++) {
-      grassSpeck.push({ fx: Math.random(), fy: Math.random(), c: greens[i % greens.length], r: 1 + Math.random() * 2, a: 0.35 + Math.random() * 0.5 });
+      grassSpeck.push({ fx: Math.random(), fy: Math.random() * LAND, c: greens[i % greens.length], r: 1 + Math.random() * 2, a: 0.35 + Math.random() * 0.5 });
     }
     var flCols = ["#f4f2e8", "#f2e3b0", "#e8d3e0", "#f4f2e8"];
     for (i = 0; i < 26; i++) {
-      flowers.push({ fx: Math.random(), fy: Math.random(), c: flCols[i % flCols.length], r: 2 + Math.random() * 2.4 });
+      flowers.push({ fx: Math.random(), fy: Math.random() * LAND, c: flCols[i % flCols.length], r: 2 + Math.random() * 2.4 });
+    }
+    // sand grain noise on the beach
+    var sandCols = ["#e4d9a8", "#d9cb92", "#efe6bd", "#d3c48a"];
+    for (i = 0; i < 130; i++) {
+      sandSpeck.push({ fx: Math.random(), fy: SAND_Y / H + Math.random() * ((SEA_Y - SAND_Y) / H), c: sandCols[i % sandCols.length], r: 1 + Math.random() * 2 });
     }
     // dirt path: spawn -> shop -> build pad -> cave mouth
     var route = [
@@ -1069,6 +1080,9 @@
     torchSpots.push({ fx: 0.5, fy: 0.32 });
     torchSpots.push({ fx: 0.78, fy: 0.62 });
     torchSpots.push({ fx: 0.38, fy: 0.78 });
+    for (i = 0; i < 46; i++) {
+      caveSparkles.push({ fx: Math.random(), fy: Math.random(), p: Math.random() * 7 });
+    }
   })();
 
   function worldToScreen(x, y) {
@@ -1076,17 +1090,19 @@
   }
 
   function drawGround() {
-    // base grass
+    var sy = SAND_Y - state.cam.y, ey = SEA_Y - state.cam.y;
+
+    // grass (only above the beach)
     ctx.fillStyle = "#d8dfba";
-    ctx.fillRect(0, 0, VW, VH);
+    ctx.fillRect(0, 0, VW, Math.min(VH, sy));
 
     // soft colour patches
     for (var i = 0; i < grassTints.length; i++) {
       var t = grassTints[i];
-      var sx = t.fx * W - state.cam.x, sy = t.fy * H - state.cam.y;
+      var sx = t.fx * W - state.cam.x, sy2 = t.fy * H - state.cam.y;
       ctx.fillStyle = t.c;
       ctx.beginPath();
-      ctx.ellipse(sx, sy, t.rx, t.ry, 0, 0, 7);
+      ctx.ellipse(sx, sy2, t.rx, t.ry, 0, 0, 7);
       ctx.fill();
     }
 
@@ -1151,10 +1167,125 @@
         ctx.setLineDash([]);
       }
     }
+
+    // beach
+    if (ey > 0 && sy < VH) {
+      var sg = ctx.createLinearGradient(0, sy, 0, ey);
+      sg.addColorStop(0, "#e6dcab");
+      sg.addColorStop(1, "#dccf96");
+      ctx.fillStyle = sg;
+      ctx.fillRect(0, Math.max(0, sy), VW, Math.min(VH, ey) - Math.max(0, sy));
+      // wet-sand line at the water's edge
+      ctx.fillStyle = "rgba(168, 148, 96, 0.45)";
+      ctx.fillRect(0, Math.min(VH, ey) - 8, VW, 8);
+      // sand grain noise
+      for (var s2 = 0; s2 < sandSpeck.length; s2++) {
+        var sp = sandSpeck[s2];
+        ctx.fillStyle = sp.c;
+        ctx.globalAlpha = 0.7;
+        ctx.beginPath();
+        ctx.arc(sp.fx * W - state.cam.x, sp.fy * H - state.cam.y, sp.r, 0, 7);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // sea
+    if (ey < VH) {
+      var wg = ctx.createLinearGradient(0, ey, 0, VH);
+      wg.addColorStop(0, "#4f88b5");
+      wg.addColorStop(0.5, "#3a6f9e");
+      wg.addColorStop(1, "#2a5685");
+      ctx.fillStyle = wg;
+      ctx.fillRect(0, Math.max(0, ey), VW, VH - Math.max(0, ey));
+      // animated waves
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+      ctx.lineWidth = 2;
+      for (var w = 0; w < 9; w++) {
+        var wy = ey + 26 + w * 30;
+        if (wy < 0 || wy > VH) continue;
+        ctx.globalAlpha = 0.25 + 0.2 * Math.sin(T * 1.5 + w * 1.1);
+        ctx.beginPath();
+        for (var wx = -20; wx <= VW + 20; wx += 14) {
+          var wxx = wx - state.cam.x * 0.15; // waves drift slowly
+          var wxy = wy + Math.sin(T * 1.2 + wx * 0.02 + w * 1.3) * 4;
+          if (wx === -20) ctx.moveTo(wxx, wxy);
+          else ctx.lineTo(wxx, wxy);
+        }
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      // foam at the shore
+      ctx.strokeStyle = "rgba(255,255,255,0.7)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (var fx2 = -20; fx2 <= VW + 20; fx2 += 10) {
+        var fxx = fx2 - state.cam.x * 0.15;
+        var fxy = ey + 4 + Math.sin(T * 2 + fx2 * 0.03) * 2.5;
+        if (fx2 === -20) ctx.moveTo(fxx, fxy);
+        else ctx.lineTo(fxx, fxy);
+      }
+      ctx.stroke();
+      drawShip();
+    }
+
     // world border
     ctx.strokeStyle = "rgba(19,22,16,0.35)";
     ctx.lineWidth = 8;
     ctx.strokeRect(-state.cam.x, -state.cam.y, W, H);
+  }
+
+  // decorative sail ship bobbing on the water
+  function drawShip() {
+    var bob = Math.sin(T * 1.3) * 3;
+    var sx = SHIP_X - state.cam.x, sy = SHIP_Y - state.cam.y + bob;
+    if (sx < -140 || sx > VW + 140 || sy < 0 || sy > VH + 140) return;
+    // hull
+    ctx.fillStyle = "#6b4a2b";
+    ctx.beginPath();
+    ctx.moveTo(sx - 52, sy - 6);
+    ctx.lineTo(sx - 34, sy + 14);
+    ctx.lineTo(sx + 34, sy + 14);
+    ctx.lineTo(sx + 52, sy - 6);
+    ctx.lineTo(sx + 40, sy - 14);
+    ctx.lineTo(sx - 40, sy - 14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#8a5f38";
+    ctx.fillRect(sx - 40, sy - 14, 80, 6);
+    // mast
+    ctx.strokeStyle = "#4a321c";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy - 10);
+    ctx.lineTo(sx, sy - 66);
+    ctx.stroke();
+    // sails
+    ctx.fillStyle = "#f4f2ed";
+    ctx.beginPath();
+    ctx.moveTo(sx + 3, sy - 62);
+    ctx.lineTo(sx + 42, sy - 8);
+    ctx.lineTo(sx + 3, sy - 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#e9e6da";
+    ctx.beginPath();
+    ctx.moveTo(sx - 3, sy - 56);
+    ctx.lineTo(sx - 30, sy - 8);
+    ctx.lineTo(sx - 3, sy - 8);
+    ctx.closePath();
+    ctx.fill();
+    // flag
+    ctx.fillStyle = "#808336";
+    ctx.beginPath();
+    ctx.moveTo(sx, sy - 66);
+    ctx.lineTo(sx + 14, sy - 61);
+    ctx.lineTo(sx, sy - 56);
+    ctx.closePath();
+    ctx.fill();
+    // reflection
+    ctx.fillStyle = "rgba(255,255,255,0.14)";
+    ctx.fillRect(sx - 8, sy + 16, 16, 26);
   }
 
   function drawTree(t) {
@@ -1221,47 +1352,92 @@
     }
   }
 
-  // rocky cave mouth on the surface (right edge of the map)
+  // rocky cave mouth on the surface (right edge of the map) — grassy hillside arch
   function drawCaveMouth() {
     var s = worldToScreen(state.caveEnterX, state.caveEnterY);
     // dark opening
-    ctx.fillStyle = "#1c1713";
+    var og = ctx.createRadialGradient(s.x, s.y, 6, s.x, s.y, 86);
+    og.addColorStop(0, "#120d09");
+    og.addColorStop(0.75, "#241c14");
+    og.addColorStop(1, "#3a2f22");
+    ctx.fillStyle = og;
     ctx.beginPath();
-    ctx.ellipse(s.x, s.y, 40, 72, 0, 0, 7);
+    ctx.ellipse(s.x, s.y, 46, 78, 0, 0, 7);
     ctx.fill();
-    // rocky frame
-    ctx.fillStyle = "#6e675f";
-    ctx.beginPath();
-    ctx.ellipse(s.x, s.y, 54, 86, 0, 0, 7);
-    ctx.fill();
-    ctx.fillStyle = "#1c1713";
-    ctx.beginPath();
-    ctx.ellipse(s.x, s.y, 40, 70, 0, 0, 7);
-    ctx.fill();
-    // rocks around the mouth
-    ctx.fillStyle = "#5a5450";
-    ctx.beginPath(); ctx.arc(s.x - 52, s.y - 42, 16, 0, 7); ctx.fill();
-    ctx.beginPath(); ctx.arc(s.x + 54, s.y - 46, 14, 0, 7); ctx.fill();
-    ctx.beginPath(); ctx.arc(s.x - 56, s.y + 48, 14, 0, 7); ctx.fill();
-    ctx.beginPath(); ctx.arc(s.x + 58, s.y + 52, 15, 0, 7); ctx.fill();
+    // rocky arch frame
+    var rocks = [
+      [-66, -50, 22], [66, -54, 20], [-74, 0, 19], [74, 0, 20],
+      [-64, 50, 21], [66, 54, 19], [-42, -80, 20], [42, -82, 19], [0, -92, 24], [-14, -96, 16], [16, -97, 15]
+    ];
+    for (var i = 0; i < rocks.length; i++) {
+      var r = rocks[i];
+      ctx.fillStyle = "#6e675f";
+      ctx.beginPath();
+      ctx.arc(s.x + r[0], s.y + r[1], r[2], 0, 7);
+      ctx.fill();
+      ctx.fillStyle = "#57504a";
+      ctx.beginPath();
+      ctx.arc(s.x + r[0] - 3, s.y + r[1] + 3, r[2] * 0.6, 0, 7);
+      ctx.fill();
+    }
+    // grass tufts on top of the arch
+    ctx.fillStyle = "#7c8f3d";
+    for (var g = 0; g < 7; g++) {
+      ctx.beginPath();
+      ctx.arc(s.x - 44 + g * 15, s.y - 88 - Math.abs(g - 3) * 5, 11, 0, 7);
+      ctx.fill();
+    }
+    ctx.fillStyle = "#97ab52";
+    for (var g2 = 0; g2 < 5; g2++) {
+      ctx.beginPath();
+      ctx.arc(s.x - 30 + g2 * 16, s.y - 96 - Math.abs(g2 - 2) * 4, 7, 0, 7);
+      ctx.fill();
+    }
     // sign
     ctx.fillStyle = "#f4f2ed";
-    ctx.fillRect(s.x - 30, s.y - 108, 60, 22);
+    ctx.fillRect(s.x - 30, s.y - 130, 60, 22);
     ctx.strokeStyle = "#6f7231";
     ctx.lineWidth = 2;
-    ctx.strokeRect(s.x - 30, s.y - 108, 60, 22);
+    ctx.strokeRect(s.x - 30, s.y - 130, 60, 22);
     ctx.fillStyle = "#5f6327";
     ctx.font = "bold 12px Montserrat, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("CAVE", s.x, s.y - 92);
+    ctx.fillText("CAVE", s.x, s.y - 114);
     ctx.textAlign = "start";
   }
 
-  // cave interior background (world-anchored, same size as the surface map)
+  // cave interior — dark blue-black cavern with a light beam and glowing crystals
   function drawCave() {
     // dark rocky base
-    ctx.fillStyle = "#1d1a15";
+    ctx.fillStyle = "#0a0a14";
     ctx.fillRect(-state.cam.x, -state.cam.y, CW, CH);
+
+    // light beam from the entrance (left), sweeping diagonally
+    var bx = 0 - state.cam.x + 30, by = 450 - state.cam.y;
+    var beam = ctx.createLinearGradient(bx, by, bx + 500, by + 260);
+    beam.addColorStop(0, "rgba(214, 230, 255, 0.22)");
+    beam.addColorStop(0.4, "rgba(190, 214, 250, 0.10)");
+    beam.addColorStop(1, "rgba(190, 214, 250, 0)");
+    ctx.fillStyle = beam;
+    ctx.beginPath();
+    ctx.moveTo(bx, by - 50);
+    ctx.lineTo(bx + 430, by - 120);
+    ctx.lineTo(bx + 520, by + 260);
+    ctx.lineTo(bx, by + 60);
+    ctx.closePath();
+    ctx.fill();
+    // second faint shaft
+    var beam2 = ctx.createLinearGradient(bx, by, bx + 420, by + 340);
+    beam2.addColorStop(0, "rgba(214, 230, 255, 0.12)");
+    beam2.addColorStop(1, "rgba(214, 230, 255, 0)");
+    ctx.fillStyle = beam2;
+    ctx.beginPath();
+    ctx.moveTo(bx, by - 20);
+    ctx.lineTo(bx + 360, by - 60);
+    ctx.lineTo(bx + 440, by + 300);
+    ctx.lineTo(bx, by + 90);
+    ctx.closePath();
+    ctx.fill();
 
     // torch light pools (warm glow, subtle flicker)
     for (var t = 0; t < torchSpots.length; t++) {
@@ -1269,7 +1445,7 @@
       var tx = tp.fx * CW, ty = tp.fy * CH;
       var flick = 0.85 + 0.15 * Math.sin(T * 6 + t * 2.1);
       var lg = ctx.createRadialGradient(tx - state.cam.x, ty - state.cam.y, 20, tx - state.cam.x, ty - state.cam.y, 300 * flick);
-      lg.addColorStop(0, "rgba(255, 176, 84, 0.14)");
+      lg.addColorStop(0, "rgba(255, 176, 84, 0.13)");
       lg.addColorStop(1, "rgba(255, 176, 84, 0)");
       ctx.fillStyle = lg;
       ctx.fillRect(tx - state.cam.x - 300, ty - state.cam.y - 300, 600, 600);
@@ -1278,9 +1454,19 @@
     // floor pebbles
     for (var pe = 0; pe < cavePebbles.length; pe++) {
       var cb = cavePebbles[pe];
-      ctx.fillStyle = "rgba(190, 180, 160, " + cb.a + ")";
+      ctx.fillStyle = "rgba(150, 160, 180, " + cb.a + ")";
       ctx.beginPath();
       ctx.arc(cb.fx * CW - state.cam.x, cb.fy * CH - state.cam.y, cb.r, 0, 7);
+      ctx.fill();
+    }
+
+    // twinkling dust
+    for (var sk = 0; sk < caveSparkles.length; sk++) {
+      var cs = caveSparkles[sk];
+      var tw = 0.5 + 0.5 * Math.sin(T * 3 + cs.p);
+      ctx.fillStyle = "rgba(210, 230, 255, " + (0.25 + 0.5 * tw) + ")";
+      ctx.beginPath();
+      ctx.arc(cs.fx * CW - state.cam.x, cs.fy * CH - state.cam.y, 1.4, 0, 7);
       ctx.fill();
     }
 
@@ -1289,12 +1475,12 @@
       var cy = crystals[cr];
       var cx = cy.fx * CW, cyy = cy.fy * CH;
       var glow = 0.5 + 0.5 * Math.sin(T * 2 + cr * 1.7);
-      ctx.fillStyle = "rgba(255,255,255,0.05)";
+      ctx.fillStyle = "rgba(140, 200, 255, 0.07)";
       ctx.beginPath();
-      ctx.arc(cx - state.cam.x, cyy - state.cam.y, 26 + glow * 8, 0, 7);
+      ctx.arc(cx - state.cam.x, cyy - state.cam.y, 30 + glow * 10, 0, 7);
       ctx.fill();
       ctx.fillStyle = cy.c;
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = 0.9;
       ctx.beginPath();
       ctx.moveTo(cx - state.cam.x, cyy - state.cam.y - cy.s * 2.4);
       ctx.lineTo(cx - state.cam.x + cy.s * 0.8, cyy - state.cam.y);
@@ -1309,19 +1495,19 @@
     for (var j = 0; j < stalactites.length; j++) {
       var st = stalactites[j];
       var ssx = st.fx * CW - state.cam.x;
-      var sy = -state.cam.y;
-      ctx.fillStyle = "#2a2620";
+      var sy2 = -state.cam.y;
+      ctx.fillStyle = "#16121c";
       ctx.beginPath();
-      ctx.moveTo(ssx - st.w / 2, sy);
-      ctx.lineTo(ssx + st.w / 2, sy);
-      ctx.lineTo(ssx, sy + st.h);
+      ctx.moveTo(ssx - st.w / 2, sy2);
+      ctx.lineTo(ssx + st.w / 2, sy2);
+      ctx.lineTo(ssx, sy2 + st.h);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.05)";
+      ctx.fillStyle = "rgba(150, 170, 210, 0.08)";
       ctx.beginPath();
-      ctx.moveTo(ssx - st.w / 4, sy);
-      ctx.lineTo(ssx + st.w / 4, sy);
-      ctx.lineTo(ssx, sy + st.h * 0.7);
+      ctx.moveTo(ssx - st.w / 4, sy2);
+      ctx.lineTo(ssx + st.w / 4, sy2);
+      ctx.lineTo(ssx, sy2 + st.h * 0.7);
       ctx.closePath();
       ctx.fill();
     }
@@ -1330,14 +1516,14 @@
       var sm = stalagmites[sg];
       var smx = sm.fx * CW - state.cam.x;
       var smy = CH - state.cam.y;
-      ctx.fillStyle = "#2a2620";
+      ctx.fillStyle = "#16121c";
       ctx.beginPath();
       ctx.moveTo(smx - sm.w / 2, smy);
       ctx.lineTo(smx + sm.w / 2, smy);
       ctx.lineTo(smx, smy - sm.h);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.04)";
+      ctx.fillStyle = "rgba(150, 170, 210, 0.07)";
       ctx.beginPath();
       ctx.moveTo(smx - sm.w / 4, smy);
       ctx.lineTo(smx + sm.w / 4, smy);
@@ -1350,30 +1536,28 @@
     for (var w = 0; w < caveWalls.length; w++) {
       var cw = caveWalls[w];
       var wx = cw.x - state.cam.x, wy = cw.y - state.cam.y;
-      ctx.fillStyle = "#322d26";
+      ctx.fillStyle = "#1c1830";
       ctx.beginPath();
       ctx.arc(wx, wy, cw.r, 0, 7);
       ctx.fill();
-      ctx.fillStyle = "#26211c";
+      ctx.fillStyle = "#12101e";
       ctx.beginPath();
       ctx.arc(wx - cw.r * 0.3, wy + cw.r * 0.15, cw.r * 0.55, 0, 7);
       ctx.fill();
     }
 
-    // light from the entrance (left edge)
-    var lg2 = ctx.createRadialGradient(0 - state.cam.x + 40, 450 - state.cam.y, 10, 0 - state.cam.x + 40, 450 - state.cam.y, 300);
-    lg2.addColorStop(0, "rgba(214, 226, 190, 0.2)");
-    lg2.addColorStop(1, "rgba(214, 226, 190, 0)");
-    ctx.fillStyle = lg2;
-    ctx.fillRect(-state.cam.x, 450 - state.cam.y - 300, 400, 600);
-
     // world border
-    ctx.strokeStyle = "rgba(0,0,0,0.6)";
+    ctx.strokeStyle = "rgba(0,0,0,0.7)";
     ctx.lineWidth = 8;
     ctx.strokeRect(-state.cam.x, -state.cam.y, CW, CH);
 
-    // exit opening on the left edge
+    // exit opening on the left edge with daylight
     var es = worldToScreen(0, 450);
+    var eg = ctx.createRadialGradient(es.x, es.y, 6, es.x, es.y, 120);
+    eg.addColorStop(0, "rgba(226, 240, 255, 0.5)");
+    eg.addColorStop(1, "rgba(226, 240, 255, 0)");
+    ctx.fillStyle = eg;
+    ctx.fillRect(es.x - 120, es.y - 120, 240, 240);
     ctx.fillStyle = "#0e0c09";
     ctx.beginPath();
     ctx.ellipse(es.x, es.y, 40, 64, 0, 0, 7);
@@ -1383,7 +1567,7 @@
     ctx.ellipse(es.x + 10, es.y, 36, 58, 0, 0, 7);
     ctx.fill();
     // torch next to the exit
-    ctx.fillStyle = "rgba(255, 176, 84, 0.25)";
+    ctx.fillStyle = "rgba(255, 176, 84, 0.3)";
     ctx.beginPath();
     ctx.arc(es.x + 66, es.y - 6, 22 + Math.sin(T * 7) * 4, 0, 7);
     ctx.fill();

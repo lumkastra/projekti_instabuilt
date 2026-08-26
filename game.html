@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Pop-Up Builder — InstaBuilt Game</title>
-<meta name="description" content="Chop wood, mine stone, trade at the shop and build an InstaBuilt Pop-Up Solution.">
+<meta name="description" content="Chop wood, mine stone and rare ores in the cave, trade at the shop and build an InstaBuilt Pop-Up Solution.">
 <link rel="icon" type="image/png" href="images/instabuilt-thumbnail.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -283,27 +283,11 @@
     .touch-pad { display: flex; }
   }
 
-  /* ---------- olive bubble cursor ---------- */
-  .cursor-bubble {
-    position: fixed;
-    top: 0; left: 0;
-    width: 32px; height: 32px;
-    margin: -16px 0 0 -16px;
-    border-radius: 50%;
-    background: rgba(128, 131, 54, 0.16);
-    border: 2px solid rgba(128, 131, 54, 0.85);
-    box-shadow: 0 0 18px rgba(128, 131, 54, 0.35);
-    pointer-events: none;
-    z-index: 400;
-    opacity: 0;
-    will-change: transform;
-  }
-  html.has-bubble, html.has-bubble body, html.has-bubble canvas { cursor: none; }
-  html.has-bubble a, html.has-bubble button { cursor: none; }
-  @media (pointer: coarse) {
-    .cursor-bubble { display: none; }
-    html.has-bubble, html.has-bubble body { cursor: auto; }
-  }
+  /* ---------- ore chip colors ---------- */
+  .hud-chip .i { color: #c98a52; }
+  .hud-chip .c2 { color: #a8adb5; }
+  .hud-chip .cu { color: #7fc1a5; }
+  .hud-chip .d { color: #7ee8fa; }
 </style>
 </head>
 <body>
@@ -317,6 +301,7 @@
     <span class="hud-chip"><span class="w">WOOD</span>: <span id="woodChip">0</span></span>
     <span class="hud-chip"><span class="s">STONE</span>: <span id="stoneChip">0</span></span>
     <span class="hud-chip"><span class="c">COINS</span>: <span id="coinChip">0</span></span>
+    <span class="hud-chip">ORES: <span class="i" id="ironChip">0</span> <span class="c2" id="coalChip">0</span> <span class="cu" id="copperChip">0</span> <span class="d" id="diamondChip">0</span></span>
   </div>
 </div>
 
@@ -335,7 +320,7 @@
 <div class="overlay" id="startOverlay">
   <p class="kicker">InstaBuilt · Pop-Up Solutions</p>
   <h1>Pop-Up <em>Builder</em></h1>
-  <p>You're on a brand-new InstaBuilt site with a <strong>stone axe</strong> and a mission: gather wood and stone, trade with the <strong>Shopkeeper</strong>, buy the kits you need — and build a <strong>28 m² Pop-Up Solution</strong>.</p>
+  <p>You're on a brand-new InstaBuilt site with a <strong>stone axe</strong> and a mission: gather wood, mine stone and rare ores in the <strong>cave</strong>, trade with the <strong>Shopkeeper</strong>, buy the kits you need — and build a <strong>28 m² Pop-Up Solution</strong>.</p>
   <p style="font-size:0.82rem; color:rgba(244,242,237,.65)">Move: WASD / arrows · Interact: E (or click) · Touch: pad + ⚒ button</p>
   <button class="btn" id="startBtn">Start building</button>
 </div>
@@ -360,6 +345,26 @@
       <div class="info"><span class="name">Sell stone</span><span class="desc">You have <span id="shopStone">0</span></span></div>
       <span class="price">+15<span class="c">c</span> each</span>
       <button id="sellStone">Sell all</button>
+    </div>
+    <div class="shop-row">
+      <div class="info"><span class="name">Sell iron ore</span><span class="desc">You have <span id="shopIron">0</span></span></div>
+      <span class="price">+25<span class="c">c</span> each</span>
+      <button id="sellIron">Sell all</button>
+    </div>
+    <div class="shop-row">
+      <div class="info"><span class="name">Sell coal</span><span class="desc">You have <span id="shopCoal">0</span></span></div>
+      <span class="price">+20<span class="c">c</span> each</span>
+      <button id="sellCoal">Sell all</button>
+    </div>
+    <div class="shop-row">
+      <div class="info"><span class="name">Sell copper ore</span><span class="desc">You have <span id="shopCopper">0</span></span></div>
+      <span class="price">+40<span class="c">c</span> each</span>
+      <button id="sellCopper">Sell all</button>
+    </div>
+    <div class="shop-row">
+      <div class="info"><span class="name">Sell diamond</span><span class="desc">You have <span id="shopDiamond">0</span></span></div>
+      <span class="price">+100<span class="c">c</span> each</span>
+      <button id="sellDiamond">Sell all</button>
     </div>
     <div class="shop-row">
       <div class="info"><span class="name">Iron axe</span><span class="desc">Chop &amp; mine 40% faster</span></div>
@@ -410,19 +415,27 @@
   var ctx = canvas.getContext("2d");
 
   var W = 2200, H = 1600;      // world size
+  var CW = 1300, CH = 900;     // cave size
   var VW = 960, VH = 700;      // viewport (css px)
   var DPR = 1;
 
   var RECIPE = { wood: 25, stone: 15, foundation: 1, panels: 1, window: 1 };
+  var ORE_DUR = { stone: 1.5, coal: 1.7, iron: 1.9, copper: 2.0, diamond: 2.5 };
+  var ORE_IRON_DUR = { stone: 0.95, coal: 1.05, iron: 1.15, copper: 1.25, diamond: 1.6 };
+  var ORE_COLORS = { stone: "#aab0b8", coal: "#3a3733", iron: "#c0793f", copper: "#4e9d6e", diamond: "#6fe3f0" };
+  var SELL_PRICES = { wood: 10, stone: 15, iron: 25, coal: 20, copper: 40, diamond: 100 };
 
   var state = {
     player: { x: 560, y: 1300, r: 15, speed: 235, dir: 0, moving: false, step: 0, tool: "stone" },
     cam: { x: 0, y: 0 },
-    inv: { wood: 0, stone: 0, coins: 0, foundation: 0, panels: 0, window: 0 },
-    total: { wood: 0, stone: 0, coins: 0 },
-    trees: [], rocks: [],
+    inv: { wood: 0, stone: 0, coins: 0, foundation: 0, panels: 0, window: 0, iron: 0, coal: 0, copper: 0, diamond: 0 },
+    total: { wood: 0, stone: 0, coins: 0, iron: 0, coal: 0, copper: 0, diamond: 0 },
+    trees: [], ores: [],
     npc: { x: 660, y: 560 },
     pad: { x: 1760, y: 420 },
+    cave: false,             // inside the cave?
+    caveEnterX: 2100, caveEnterY: 800,   // cave mouth on the surface (right edge)
+    caveSpawnX: 150, caveSpawnY: 450,    // where the player appears inside the cave
     chop: null,            // {target, t, dur, kind}
     build: null,           // {t, dur}
     objective: 0,
@@ -435,7 +448,7 @@
 
   var OBJECTIVES = [
     "Chop trees to gather 6 wood (E near a tree)",
-    "Mine rocks to gather 4 stone (E near a rock)",
+    "Enter the cave at the end of the map and mine 4 stone (E near a rock)",
     "Talk to the Shopkeeper at the start of the map",
     "Buy the Foundation, Panel and Window kits at the shop",
     "Gather 25 wood and 15 stone",
@@ -465,29 +478,43 @@
       if (Math.hypot(x - state.player.x, y - state.player.y) < 320) continue;
       if (Math.hypot(x - state.npc.x, y - state.npc.y) < 260) continue;
       if (Math.hypot(x - state.pad.x, y - state.pad.y) < 260) continue;
+      if (Math.hypot(x - state.caveEnterX, y - state.caveEnterY) < 260) continue;
       if (!farFrom(x, y, state.trees, 120)) continue;
       state.trees.push({ x: x, y: y, alive: true, respawn: 0, seed: Math.random() * 10 });
     }
   }
 
-  function genRocks() {
-    var tries = 0;
-    while (state.rocks.length < 9 && tries < 400) {
-      tries++;
-      var x = 150 + Math.random() * (W - 300);
-      var y = 150 + Math.random() * (H - 300);
-      if (Math.hypot(x - state.player.x, y - state.player.y) < 320) continue;
-      if (Math.hypot(x - state.npc.x, y - state.npc.y) < 260) continue;
-      if (Math.hypot(x - state.pad.x, y - state.pad.y) < 260) continue;
-      if (!farFrom(x, y, state.rocks, 120)) continue;
-      state.rocks.push({ x: x, y: y, alive: true, respawn: 0, seed: Math.random() * 10 });
-    }
+  // ores only exist inside the cave; the cave regenerates on every enter/leave
+  function genOres() {
+    state.ores = [];
+    var plan = [
+      { kind: "stone", min: 9, max: 11 },
+      { kind: "coal", min: 5, max: 7 },
+      { kind: "iron", min: 4, max: 5 },
+      { kind: "copper", min: 2, max: 3 },
+      { kind: "diamond", min: 1, max: 2 }
+    ];
+    plan.forEach(function (g) {
+      var n = g.min + Math.floor(Math.random() * (g.max - g.min + 1));
+      var tries = 0;
+      while (n > 0 && tries < 400) {
+        tries++;
+        var x = 130 + Math.random() * (CW - 260);
+        var y = 100 + Math.random() * (CH - 200);
+        if (Math.hypot(x - state.caveSpawnX, y - state.caveSpawnY) < 260) continue;
+        if (!farFrom(x, y, state.ores, 85)) continue;
+        state.ores.push({ x: x, y: y, kind: g.kind, alive: true, respawn: 0, seed: Math.random() * 10 });
+        n--;
+      }
+    });
   }
 
   function reset() {
     state.inv.wood = 0; state.inv.stone = 0; state.inv.coins = 0;
     state.inv.foundation = 0; state.inv.panels = 0; state.inv.window = 0;
+    state.inv.iron = 0; state.inv.coal = 0; state.inv.copper = 0; state.inv.diamond = 0;
     state.total.wood = 0; state.total.stone = 0; state.total.coins = 0;
+    state.total.iron = 0; state.total.coal = 0; state.total.copper = 0; state.total.diamond = 0;
     state.player.x = 560; state.player.y = 1300;
     state.player.tool = "stone";
     state.player.moving = false;
@@ -498,10 +525,11 @@
     state.started = true;
     state.running = true;
     state.shopOpen = false;
+    state.visitedShop = false;
+    state.cave = false;
     state.trees = [];
-    state.rocks = [];
+    state.ores = [];
     genTrees();
-    genRocks();
     document.getElementById("shop").classList.add("hidden");
     document.getElementById("startOverlay").classList.add("hidden");
     document.getElementById("winOverlay").classList.add("hidden");
@@ -544,11 +572,7 @@
     var wx = state.cam.x + e.clientX;
     var wy = state.cam.y + e.clientY;
     var best = null, bd = 90;
-    var spots = [];
-    state.trees.forEach(function (t) { if (t.alive) spots.push({ x: t.x, y: t.y, kind: "tree", ref: t }); });
-    state.rocks.forEach(function (r) { if (r.alive) spots.push({ x: r.x, y: r.y, kind: "rock", ref: r }); });
-    spots.push({ x: state.npc.x, y: state.npc.y, kind: "npc" });
-    spots.push({ x: state.pad.x, y: state.pad.y, kind: "pad" });
+    var spots = getSpots();
     for (var i = 0; i < spots.length; i++) {
       var d = Math.hypot(spots[i].x - wx, spots[i].y - wy);
       if (d < bd) { bd = d; best = spots[i]; }
@@ -563,13 +587,24 @@
   });
 
   /* ================= interaction ================= */
+  function getSpots() {
+    var spots = [];
+    if (state.cave) {
+      state.ores.forEach(function (o) { if (o.alive) spots.push({ x: o.x, y: o.y, kind: "ore", ref: o }); });
+      // cave exit at the left edge
+      spots.push({ x: 60, y: 450, kind: "caveExit" });
+    } else {
+      state.trees.forEach(function (t) { if (t.alive) spots.push({ x: t.x, y: t.y, kind: "tree", ref: t }); });
+      spots.push({ x: state.npc.x, y: state.npc.y, kind: "npc" });
+      spots.push({ x: state.pad.x, y: state.pad.y, kind: "pad" });
+      spots.push({ x: state.caveEnterX - 40, y: state.caveEnterY, kind: "caveEnter" });
+    }
+    return spots;
+  }
+
   function nearestTarget() {
     var best = null, bd = 80;
-    var spots = [];
-    state.trees.forEach(function (t) { if (t.alive) spots.push({ x: t.x, y: t.y, kind: "tree", ref: t }); });
-    state.rocks.forEach(function (r) { if (r.alive) spots.push({ x: r.x, y: r.y, kind: "rock", ref: r }); });
-    spots.push({ x: state.npc.x, y: state.npc.y, kind: "npc" });
-    spots.push({ x: state.pad.x, y: state.pad.y, kind: "pad" });
+    var spots = getSpots();
     for (var i = 0; i < spots.length; i++) {
       var d = Math.hypot(spots[i].x - state.player.x, spots[i].y - state.player.y);
       if (d < bd) { bd = d; best = spots[i]; }
@@ -578,21 +613,69 @@
   }
 
   function interact() {
-    if (!state.running || state.shopOpen) return;
+    if (!state.running || state.shopOpen || fade.on) return;
     var t = nearestTarget();
     if (t) interactWith(t);
   }
 
   function interactWith(t) {
     if (t.kind === "tree") startGather(t.ref, "tree");
-    else if (t.kind === "rock") startGather(t.ref, "rock");
+    else if (t.kind === "ore") startGather(t.ref, "ore");
     else if (t.kind === "npc") openShop();
     else if (t.kind === "pad") startBuild();
+    else if (t.kind === "caveEnter") enterCave();
+    else if (t.kind === "caveExit") leaveCave();
+  }
+
+  /* ================= cave transitions ================= */
+  var fade = { on: false, a: 0, dir: 1, mid: null }; // fading overlay
+
+  function startFade(mid) {
+    if (fade.on) return;
+    fade.on = true;
+    fade.a = 0;
+    fade.dir = 1;
+    fade.mid = mid;
+  }
+
+  function enterCave() {
+    if (state.cave || fade.on || state.shopOpen) return;
+    clickTarget = null;
+    state.chop = null;
+    state.build = null;
+    startFade(function () {
+      state.cave = true;
+      state.player.x = state.caveSpawnX;
+      state.player.y = state.caveSpawnY;
+      state.player.moving = false;
+      genOres(); // fresh ore layout every entry
+      updateHud();
+    });
+  }
+
+  function leaveCave() {
+    if (!state.cave || fade.on || state.shopOpen) return;
+    clickTarget = null;
+    state.chop = null;
+    state.build = null;
+    startFade(function () {
+      state.cave = false;
+      state.player.x = state.caveEnterX - 30;
+      state.player.y = state.caveEnterY;
+      state.player.moving = false;
+      state.ores = []; // reset on leave too
+      updateHud();
+    });
   }
 
   function startGather(target, kind) {
-    if (state.chop) return;
-    var dur = state.player.tool === "iron" ? 0.95 : 1.5;
+    if (state.chop || fade.on) return;
+    var dur;
+    if (kind === "ore") {
+      dur = (state.player.tool === "iron" ? ORE_IRON_DUR : ORE_DUR)[target.kind] || 1.5;
+    } else {
+      dur = state.player.tool === "iron" ? 0.95 : 1.5;
+    }
     state.chop = { target: target, kind: kind, t: 0, dur: dur };
   }
 
@@ -631,15 +714,23 @@
     document.getElementById("shopCoins").textContent = state.inv.coins;
     document.getElementById("shopWood").textContent = state.inv.wood;
     document.getElementById("shopStone").textContent = state.inv.stone;
+    document.getElementById("shopIron").textContent = state.inv.iron;
+    document.getElementById("shopCoal").textContent = state.inv.coal;
+    document.getElementById("shopCopper").textContent = state.inv.copper;
+    document.getElementById("shopDiamond").textContent = state.inv.diamond;
     document.getElementById("buyAxe").disabled = state.player.tool === "iron" || state.inv.coins < 100;
     document.getElementById("buyFoundation").disabled = state.inv.coins < 60;
     document.getElementById("buyPanels").disabled = state.inv.coins < 90;
     document.getElementById("buyWindow").disabled = state.inv.coins < 70;
     document.getElementById("sellWood").disabled = state.inv.wood === 0;
     document.getElementById("sellStone").disabled = state.inv.stone === 0;
+    document.getElementById("sellIron").disabled = state.inv.iron === 0;
+    document.getElementById("sellCoal").disabled = state.inv.coal === 0;
+    document.getElementById("sellCopper").disabled = state.inv.copper === 0;
+    document.getElementById("sellDiamond").disabled = state.inv.diamond === 0;
     document.getElementById("shopNote").textContent = state.player.tool === "iron"
-      ? "You own the iron axe."
-      : "Recipe for the 28 m² Pop-Up: 25 wood + 15 stone + Foundation + Panels + Window.";
+      ? "You own the iron axe. Stone and ores come from the cave — it resets every time you enter!"
+      : "Recipe for the 28 m² Pop-Up: 25 wood + 15 stone + Foundation + Panels + Window. Stone & ores: cave at the end of the map.";
   }
 
   function buy(kind, price) {
@@ -654,15 +745,12 @@
   }
 
   function sell(kind) {
-    if (kind === "wood") {
-      state.inv.coins += state.inv.wood * 10;
-      state.total.coins += state.inv.wood * 10;
-      state.inv.wood = 0;
-    } else {
-      state.inv.coins += state.inv.stone * 15;
-      state.total.coins += state.inv.stone * 15;
-      state.inv.stone = 0;
-    }
+    var price = SELL_PRICES[kind];
+    var amt = state.inv[kind];
+    if (!price || amt <= 0) return;
+    state.inv.coins += amt * price;
+    state.total.coins += amt * price;
+    state.inv[kind] = 0;
     updateShop();
     updateHud();
     updateObjective();
@@ -670,6 +758,10 @@
 
   document.getElementById("sellWood").addEventListener("click", function () { sell("wood"); });
   document.getElementById("sellStone").addEventListener("click", function () { sell("stone"); });
+  document.getElementById("sellIron").addEventListener("click", function () { sell("iron"); });
+  document.getElementById("sellCoal").addEventListener("click", function () { sell("coal"); });
+  document.getElementById("sellCopper").addEventListener("click", function () { sell("copper"); });
+  document.getElementById("sellDiamond").addEventListener("click", function () { sell("diamond"); });
   document.getElementById("buyAxe").addEventListener("click", function () { buy("axe", 100); });
   document.getElementById("buyFoundation").addEventListener("click", function () { buy("foundation", 60); });
   document.getElementById("buyPanels").addEventListener("click", function () { buy("panels", 90); });
@@ -699,6 +791,10 @@
     document.getElementById("stoneChip").textContent = state.inv.stone;
     document.getElementById("coinChip").textContent = state.inv.coins;
     document.getElementById("toolChip").textContent = state.player.tool === "iron" ? "Iron" : "Stone";
+    document.getElementById("ironChip").textContent = state.inv.iron;
+    document.getElementById("coalChip").textContent = state.inv.coal;
+    document.getElementById("copperChip").textContent = state.inv.copper;
+    document.getElementById("diamondChip").textContent = state.inv.diamond;
   }
 
   var hintTimer = 0;
@@ -715,10 +811,24 @@
     state.elapsed += dt;
     if (hintTimer > 0) { hintTimer -= dt; if (hintTimer <= 0) document.getElementById("hint").classList.remove("show"); }
 
+    // fade transition: 0 -> 1 -> 0, swap the world at the middle
+    if (fade.on) {
+      fade.a += fade.dir * dt * 1.6;
+      if (fade.a >= 1) {
+        fade.a = 1;
+        if (fade.mid) { var mid = fade.mid; fade.mid = null; mid(); }
+        fade.dir = -1;
+      } else if (fade.a <= 0) {
+        fade.a = 0;
+        fade.on = false;
+        fade.dir = 1;
+      }
+    }
+
     // movement
     var p = state.player;
-    if (!state.shopOpen) {
-    // (movement, gathering and building pause while the shop is open)
+    if (!state.shopOpen && !fade.on) {
+    // (movement, gathering and building pause while the shop is open or fading)
     var up = (keys["w"] || keys["arrowup"]) || touchKeys.up;
     var down = (keys["s"] || keys["arrowdown"]) || touchKeys.down;
     var left = (keys["a"] || keys["arrowleft"]) || touchKeys.left;
@@ -753,8 +863,16 @@
         p.step += dt * 9;
       }
     }
-    p.x = Math.max(24, Math.min(W - 24, p.x));
-    p.y = Math.max(24, Math.min(H - 24, p.y));
+    var WW = state.cave ? CW : W, HH = state.cave ? CH : H;
+    p.x = Math.max(24, Math.min(WW - 24, p.x));
+    p.y = Math.max(24, Math.min(HH - 24, p.y));
+
+    // walking into the cave mouth (surface) or out of it (cave)
+    if (!state.cave) {
+      if (p.x > state.caveEnterX - 46 && Math.abs(p.y - state.caveEnterY) < 120) enterCave();
+    } else {
+      if (p.x < 96 && Math.abs(p.y - 450) < 120) leaveCave();
+    }
 
     // gathering progress
     if (state.chop) {
@@ -764,18 +882,31 @@
       } else {
         c.t += dt;
         if (c.t >= c.dur) {
-          var amount = 2 + Math.floor(Math.random() * 2); // 2-3
           if (c.kind === "tree") {
+            var amount = 2 + Math.floor(Math.random() * 2); // 2-3
             state.inv.wood += amount;
             state.total.wood += amount;
             addFloat(c.target.x, c.target.y - 40, "+" + amount + " wood", "#d9b380");
             c.target.alive = false;
             c.target.respawn = 20;
             if (state.objective === 0) updateObjective();
+          } else if (c.kind === "ore") {
+            var o = c.target;
+            var y;
+            if (o.kind === "diamond") y = 1;
+            else if (o.kind === "copper" || o.kind === "iron") y = 1 + Math.floor(Math.random() * 2);
+            else y = 2 + Math.floor(Math.random() * 2); // stone & coal: 2-3
+            state.inv[o.kind] += y;
+            state.total[o.kind] += y;
+            addFloat(o.x, o.y - 40, "+" + y + " " + o.kind, ORE_COLORS[o.kind]);
+            o.alive = false;
+            o.respawn = 0;
+            if (state.objective === 1 && o.kind === "stone") updateObjective();
           } else {
-            state.inv.stone += amount;
-            state.total.stone += amount;
-            addFloat(c.target.x, c.target.y - 40, "+" + amount + " stone", "#b9c0c8");
+            var stoneAmt = 2 + Math.floor(Math.random() * 2);
+            state.inv.stone += stoneAmt;
+            state.total.stone += stoneAmt;
+            addFloat(c.target.x, c.target.y - 40, "+" + stoneAmt + " stone", "#b9c0c8");
             c.target.alive = false;
             c.target.respawn = 20;
             if (state.objective === 1) updateObjective();
@@ -803,17 +934,17 @@
 
     // respawn
     state.trees.forEach(function (t) { if (!t.alive) { t.respawn -= dt; if (t.respawn <= 0) t.alive = true; } });
-    state.rocks.forEach(function (r) { if (!r.alive) { r.respawn -= dt; if (r.respawn <= 0) r.alive = true; } });
 
     // floating texts
-    } // end shop-open pause
+    } // end shop-open/fade pause
     floats.forEach(function (f) { f.t += dt; });
     floats = floats.filter(function (f) { return f.t < 1.4; });
 
     // camera
+    var WW2 = state.cave ? CW : W, HH2 = state.cave ? CH : H;
     var cx = p.x - VW / 2, cy = p.y - VH / 2;
-    cx = Math.max(0, Math.min(W - VW, cx));
-    cy = Math.max(0, Math.min(H - VH, cy));
+    cx = Math.max(0, Math.min(WW2 - VW, cx));
+    cy = Math.max(0, Math.min(HH2 - VH, cy));
     state.cam.x += (cx - state.cam.x) * 0.12;
     state.cam.y += (cy - state.cam.y) * 0.12;
 
@@ -827,7 +958,12 @@
     var t = nearestTarget();
     var el = document.getElementById("hint");
     if (t && state.running) {
-      var txt = t.kind === "tree" ? "E — Chop tree" : t.kind === "rock" ? "E — Mine stone" : t.kind === "npc" ? "E — Talk to Shopkeeper" : "E — Build Pop-Up";
+      var txt = t.kind === "tree" ? "E — Chop tree"
+        : t.kind === "ore" ? "E — Mine " + t.ref.kind + (t.ref.kind === "stone" ? "" : " ore")
+        : t.kind === "npc" ? "E — Talk to Shopkeeper"
+        : t.kind === "pad" ? "E — Build Pop-Up"
+        : t.kind === "caveEnter" ? "E — Enter the cave"
+        : "E — Leave the cave";
       if (el.textContent !== txt) { el.textContent = txt; el.classList.add("show"); }
     } else if (!t && hintTimer <= 0) {
       el.classList.remove("show");
@@ -859,6 +995,13 @@
     for (var i = 0; i < 30; i++) {
       patches.push({ fx: Math.random(), fy: Math.random(), r: 50 + Math.random() * 110, g: 138, a: 0.16, pop: 0, caught: false });
     }
+  })();
+
+  var cavePatches = [];
+  var stalactites = [];
+  (function makeCave() {
+    for (var i = 0; i < 12; i++) cavePatches.push({ fx: Math.random(), fy: Math.random(), r: 30 + Math.random() * 60 });
+    for (var j = 0; j < 9; j++) stalactites.push({ fx: Math.random(), fy: Math.random() });
   })();
 
   function worldToScreen(x, y) {
@@ -919,21 +1062,128 @@
     }
   }
 
-  function drawRock(r) {
-    if (!r.alive) return;
-    var s = worldToScreen(r.x, r.y);
-    ctx.fillStyle = "#8d939c";
+  function drawRock(r) {  // alias kept for safety
+    drawOre(r);
+  }
+
+  function drawOre(o) {
+    if (!o.alive) return;
+    var s = worldToScreen(o.x, o.y);
+    // base rock
+    ctx.fillStyle = "#5a5450";
     ctx.beginPath();
-    ctx.ellipse(s.x, s.y, 20, 15, 0, 0, 7);
+    ctx.ellipse(s.x, s.y, 20, 14, 0, 0, 7);
     ctx.fill();
-    ctx.fillStyle = "#a6adb6";
+    ctx.fillStyle = "#6e675f";
     ctx.beginPath();
-    ctx.ellipse(s.x - 6, s.y - 5, 10, 7, 0, 0, 7);
+    ctx.ellipse(s.x - 5, s.y - 4, 10, 7, 0, 0, 7);
     ctx.fill();
-    ctx.fillStyle = "#6f757d";
+    // mineral chunks
+    ctx.fillStyle = ORE_COLORS[o.kind];
+    ctx.beginPath(); ctx.arc(s.x - 7, s.y - 2, 5 + o.seed % 3, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(s.x + 6, s.y + 3, 4, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(s.x + 1, s.y - 6, 3.5, 0, 7); ctx.fill();
+    if (o.kind === "diamond") {
+      // glow pulse + sparkle
+      var gl = 0.5 + 0.5 * Math.sin(T * 3 + o.seed);
+      ctx.fillStyle = "rgba(111, 227, 240, " + (0.12 + 0.14 * gl) + ")";
+      ctx.beginPath(); ctx.arc(s.x, s.y, 26 + gl * 6, 0, 7); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.85)";
+      ctx.lineWidth = 1.5;
+      var r = 7 + gl * 3;
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y - r); ctx.lineTo(s.x, s.y + r);
+      ctx.moveTo(s.x - r, s.y); ctx.lineTo(s.x + r, s.y);
+      ctx.stroke();
+    }
+  }
+
+  // rocky cave mouth on the surface (right edge of the map)
+  function drawCaveMouth() {
+    var s = worldToScreen(state.caveEnterX, state.caveEnterY);
+    // dark opening
+    ctx.fillStyle = "#1c1713";
     ctx.beginPath();
-    ctx.ellipse(s.x + 6, s.y + 4, 8, 5, 0, 0, 7);
+    ctx.ellipse(s.x, s.y, 40, 72, 0, 0, 7);
     ctx.fill();
+    // rocky frame
+    ctx.fillStyle = "#6e675f";
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y, 54, 86, 0, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = "#1c1713";
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y, 40, 70, 0, 0, 7);
+    ctx.fill();
+    // rocks around the mouth
+    ctx.fillStyle = "#5a5450";
+    ctx.beginPath(); ctx.arc(s.x - 52, s.y - 42, 16, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(s.x + 54, s.y - 46, 14, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(s.x - 56, s.y + 48, 14, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(s.x + 58, s.y + 52, 15, 0, 7); ctx.fill();
+    // sign
+    ctx.fillStyle = "#f4f2ed";
+    ctx.fillRect(s.x - 30, s.y - 108, 60, 22);
+    ctx.strokeStyle = "#6f7231";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(s.x - 30, s.y - 108, 60, 22);
+    ctx.fillStyle = "#5f6327";
+    ctx.font = "bold 12px Montserrat, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("CAVE", s.x, s.y - 92);
+    ctx.textAlign = "start";
+  }
+
+  // cave interior background (world-anchored)
+  function drawCave() {
+    ctx.fillStyle = "#1d1a15";
+    ctx.fillRect(-state.cam.x, -state.cam.y, CW, CH);
+    // subtle floor patches
+    for (var i = 0; i < cavePatches.length; i++) {
+      var p = cavePatches[i];
+      var sx = p.fx * CW - state.cam.x, sy = p.fy * CH - state.cam.y;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.025)";
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, p.r, p.r * 0.55, 0, 0, 7);
+      ctx.fill();
+    }
+    // stalactites
+    for (var j = 0; j < stalactites.length; j++) {
+      var st = stalactites[j];
+      var ssx = st.fx * CW - state.cam.x;
+      ctx.fillStyle = "#2a2620";
+      ctx.beginPath();
+      ctx.moveTo(ssx - 22, -state.cam.y);
+      ctx.lineTo(ssx + 22, -state.cam.y);
+      ctx.lineTo(ssx, -state.cam.y + 60 + st.fy * 40);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // light from the entrance (left edge)
+    var lg = ctx.createRadialGradient(0 - state.cam.x + 40, 450 - state.cam.y, 10, 0 - state.cam.x + 40, 450 - state.cam.y, 260);
+    lg.addColorStop(0, "rgba(214, 226, 190, 0.16)");
+    lg.addColorStop(1, "rgba(214, 226, 190, 0)");
+    ctx.fillStyle = lg;
+    ctx.fillRect(-state.cam.x, 450 - state.cam.y - 260, 320, 520);
+    // world border
+    ctx.strokeStyle = "rgba(0,0,0,0.55)";
+    ctx.lineWidth = 8;
+    ctx.strokeRect(-state.cam.x, -state.cam.y, CW, CH);
+    // exit opening on the left edge
+    var es = worldToScreen(0, 450);
+    ctx.fillStyle = "#0e0c09";
+    ctx.beginPath();
+    ctx.ellipse(es.x, es.y, 40, 64, 0, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = "#3a342b";
+    ctx.beginPath();
+    ctx.ellipse(es.x + 10, es.y, 36, 58, 0, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = "#b9c185";
+    ctx.font = "bold 12px Montserrat, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("EXIT →", es.x + 90, es.y);
+    ctx.textAlign = "start";
   }
 
   function drawNPC() {
@@ -1114,7 +1364,7 @@
   /* ================= easter egg (kept) ================= */
   var drag = { on: false, patch: null, sx: 0, sy: 0, moved: 0, tx: 0, ty: 0 };
   canvas.addEventListener("pointerdown", function (e) {
-    if (!state.running) return;
+    if (!state.running || state.cave) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
     var wx = state.cam.x + e.clientX, wy = state.cam.y + e.clientY;
     for (var i = patches.length - 1; i >= 0; i--) {
@@ -1175,14 +1425,27 @@
   }
 
   function render() {
-    drawGround();
-    state.trees.forEach(drawTree);
-    state.rocks.forEach(drawRock);
-    drawPad();
-    drawNPC();
-    drawPlayer();
-    drawFloats();
-    drawVignette();
+    if (state.cave) {
+      drawCave();
+      state.ores.forEach(drawOre);
+      drawPlayer();
+      drawFloats();
+      drawVignette();
+    } else {
+      drawGround();
+      state.trees.forEach(drawTree);
+      drawCaveMouth();
+      drawPad();
+      drawNPC();
+      drawPlayer();
+      drawFloats();
+      drawVignette();
+    }
+    // fade overlay
+    if (fade.on) {
+      ctx.fillStyle = "rgba(8, 10, 7, " + fade.a.toFixed(3) + ")";
+      ctx.fillRect(0, 0, VW, VH);
+    }
   }
 
   var last = performance.now();
@@ -1203,29 +1466,6 @@
     canvas.height = Math.round(VH * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   }
-
-  /* ---------- olive bubble cursor ---------- */
-  (function () {
-    if (!window.matchMedia) return;
-    if (window.matchMedia("(pointer: coarse)").matches) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    var el = document.createElement("div");
-    el.className = "cursor-bubble";
-    document.body.appendChild(el);
-    document.documentElement.classList.add("has-bubble");
-    var mx = -100, my = -100, x = -100, y = -100, hover = false;
-    document.addEventListener("mousemove", function (e) { mx = e.clientX; my = e.clientY; el.style.opacity = "1"; });
-    document.addEventListener("mouseout", function (e) { if (!e.relatedTarget) el.style.opacity = "0"; });
-    document.addEventListener("mouseover", function (e) { hover = !!e.target.closest("a, button, .touch-pad button"); });
-    document.addEventListener("mouseout", function (e) { if (e.relatedTarget) hover = false; });
-    function loop() {
-      x += (mx - x) * 0.22;
-      y += (my - y) * 0.22;
-      el.style.transform = "translate(" + x + "px," + y + "px) scale(" + (hover ? 1.6 : 1) + ")";
-      requestAnimationFrame(loop);
-    }
-    loop();
-  })();
 
   fit();
   updateHud();

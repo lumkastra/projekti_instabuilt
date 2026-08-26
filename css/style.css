@@ -1080,29 +1080,6 @@ h1 em, h2 em, h3 em, blockquote em {
   .chat-panel { bottom: 5.3rem; }
 }
 
-/* ---------- Olive bubble cursor ---------- */
-.cursor-bubble {
-  position: fixed;
-  top: 0; left: 0;
-  width: 32px; height: 32px;
-  margin: -16px 0 0 -16px;
-  border-radius: 50%;
-  background: rgba(128, 131, 54, 0.16);
-  border: 2px solid rgba(128, 131, 54, 0.85);
-  box-shadow: 0 0 18px rgba(128, 131, 54, 0.35);
-  pointer-events: none;
-  z-index: 400;
-  opacity: 0;
-  will-change: transform;
-}
-html.has-bubble, html.has-bubble body { cursor: none; }
-html.has-bubble a, html.has-bubble button, html.has-bubble [role="button"] { cursor: none; }
-html.has-bubble input, html.has-bubble textarea { cursor: text; }
-@media (pointer: coarse) {
-  .cursor-bubble { display: none; }
-  html.has-bubble, html.has-bubble body { cursor: auto; }
-}
-
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

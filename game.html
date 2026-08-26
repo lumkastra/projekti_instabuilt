@@ -414,8 +414,8 @@
   var canvas = document.getElementById("game");
   var ctx = canvas.getContext("2d");
 
-  var W = 2200, H = 1600;      // world size
-  var CW = 1300, CH = 900;     // cave size
+  var W = 2200, H = 1600;      // world (surface) size
+  var CW = W, CH = H;          // cave: same size as the surface map
   var VW = 960, VH = 700;      // viewport (css px)
   var DPR = 1;
 
@@ -488,10 +488,10 @@
   function genOres() {
     state.ores = [];
     var plan = [
-      { kind: "stone", min: 9, max: 11 },
-      { kind: "coal", min: 5, max: 7 },
-      { kind: "iron", min: 4, max: 5 },
-      { kind: "copper", min: 2, max: 3 },
+      { kind: "stone", min: 14, max: 17 },
+      { kind: "coal", min: 8, max: 11 },
+      { kind: "iron", min: 6, max: 8 },
+      { kind: "copper", min: 3, max: 5 },
       { kind: "diamond", min: 1, max: 2 }
     ];
     plan.forEach(function (g) {
@@ -660,7 +660,7 @@
     state.build = null;
     startFade(function () {
       state.cave = false;
-      state.player.x = state.caveEnterX - 30;
+      state.player.x = state.caveEnterX - 150;  // well clear of the enter trigger (x > caveEnterX - 46)
       state.player.y = state.caveEnterY;
       state.player.moving = false;
       state.ores = []; // reset on leave too
@@ -997,11 +997,78 @@
     }
   })();
 
-  var cavePatches = [];
-  var stalactites = [];
-  (function makeCave() {
-    for (var i = 0; i < 12; i++) cavePatches.push({ fx: Math.random(), fy: Math.random(), r: 30 + Math.random() * 60 });
-    for (var j = 0; j < 9; j++) stalactites.push({ fx: Math.random(), fy: Math.random() });
+  // ---------- precomputed world decoration ----------
+  var grassTints = [];      // soft large colour patches on the surface
+  var grassSpeck = [];      // tiny grass blades / noise
+  var flowers = [];         // little flowers
+  var pathPoints = [];      // dirt path through the world
+  var pathSpeck = [];       // pebbles on the dirt path
+  var caveWalls = [];       // rocky wall rocks around the cave
+  var stalactites = [];     // hanging from the cave ceiling
+  var stalagmites = [];     // rising from the cave floor
+  var cavePebbles = [];     // floor stones in the cave
+  var crystals = [];        // glowing crystal clusters (ambient)
+  var torchSpots = [];      // warm light pools in the cave
+
+  (function makeDecor() {
+    var i, j;
+    for (i = 0; i < 34; i++) {
+      grassTints.push({
+        fx: Math.random(), fy: Math.random(),
+        rx: 90 + Math.random() * 190, ry: 60 + Math.random() * 130,
+        c: Math.random() < 0.5 ? "rgba(122, 138, 66, 0.10)" : "rgba(212, 222, 168, 0.16)"
+      });
+    }
+    var greens = ["#9aa86b", "#aebb82", "#c2cd96", "#8fa060", "#b3c18a"];
+    for (i = 0; i < 260; i++) {
+      grassSpeck.push({ fx: Math.random(), fy: Math.random(), c: greens[i % greens.length], r: 1 + Math.random() * 2, a: 0.35 + Math.random() * 0.5 });
+    }
+    var flCols = ["#f4f2e8", "#f2e3b0", "#e8d3e0", "#f4f2e8"];
+    for (i = 0; i < 26; i++) {
+      flowers.push({ fx: Math.random(), fy: Math.random(), c: flCols[i % flCols.length], r: 2 + Math.random() * 2.4 });
+    }
+    // dirt path: spawn -> shop -> build pad -> cave mouth
+    var route = [
+      [560, 1300], [600, 1050], [640, 700], [660, 560],
+      [900, 520], [1250, 480], [1500, 440], [1760, 420],
+      [1900, 520], [2000, 660], [2080, 800]
+    ];
+    for (i = 0; i < route.length - 1; i++) {
+      var x0 = route[i][0], y0 = route[i][1], x1 = route[i + 1][0], y1 = route[i + 1][1];
+      var seg = Math.hypot(x1 - x0, y1 - y0);
+      var steps = Math.max(2, Math.round(seg / 34));
+      for (j = 0; j < steps; j++) {
+        var t = j / steps;
+        pathPoints.push([x0 + (x1 - x0) * t, y0 + (y1 - y0) * t]);
+      }
+    }
+    for (i = 0; i < 90; i++) {
+      var pp = pathPoints[(Math.random() * pathPoints.length) | 0];
+      pathSpeck.push({ x: pp[0] + (Math.random() - 0.5) * 30, y: pp[1] + (Math.random() - 0.5) * 30, r: 1.5 + Math.random() * 2 });
+    }
+    // cave wall rocks around the perimeter
+    function wallRock(x, y, r) { caveWalls.push({ x: x, y: y, r: r, d: Math.random() * 10 }); }
+    for (i = 0; i <= 44; i++) { var t = i / 44; wallRock(t * CW, 18 + Math.random() * 34, 40 + Math.random() * 50); }            // top
+    for (i = 0; i <= 44; i++) { var t = i / 44; wallRock(t * CW, CH - 18 - Math.random() * 34, 40 + Math.random() * 50); }        // bottom
+    for (i = 0; i <= 32; i++) { var t = i / 32; wallRock(18 + Math.random() * 34, t * CH, 40 + Math.random() * 50); }             // left
+    for (i = 0; i <= 32; i++) { var t = i / 32; wallRock(CW - 18 - Math.random() * 34, t * CH, 40 + Math.random() * 50); }        // right
+    for (i = 0; i < 26; i++) {
+      stalactites.push({ fx: Math.random(), fy: Math.random(), w: 26 + Math.random() * 44, h: 50 + Math.random() * 110 });
+    }
+    for (i = 0; i < 20; i++) {
+      stalagmites.push({ fx: Math.random(), fy: Math.random(), w: 22 + Math.random() * 40, h: 40 + Math.random() * 90 });
+    }
+    for (i = 0; i < 150; i++) {
+      cavePebbles.push({ fx: Math.random(), fy: Math.random(), r: 2 + Math.random() * 3.5, a: 0.05 + Math.random() * 0.08 });
+    }
+    var cryCols = ["#6fe3f0", "#7fd1a0", "#b98fe0", "#8fd0f0"];
+    for (i = 0; i < 9; i++) {
+      crystals.push({ fx: Math.random(), fy: Math.random(), c: cryCols[i % cryCols.length], s: 3 + Math.random() * 5 });
+    }
+    torchSpots.push({ fx: 0.16, fy: 0.5 });
+    torchSpots.push({ fx: 0.5, fy: 0.32 });
+    torchSpots.push({ fx: 0.78, fy: 0.62 });
+    torchSpots.push({ fx: 0.38, fy: 0.78 });
   })();
 
   function worldToScreen(x, y) {
@@ -1009,21 +1076,77 @@
   }
 
   function drawGround() {
-    ctx.fillStyle = "#dde3c0";
+    // base grass
+    ctx.fillStyle = "#d8dfba";
     ctx.fillRect(0, 0, VW, VH);
-    for (var i = 0; i < patches.length; i++) {
-      var p = patches[i];
-      var sx = p.fx * W - state.cam.x, sy = p.fy * H - state.cam.y;
+
+    // soft colour patches
+    for (var i = 0; i < grassTints.length; i++) {
+      var t = grassTints[i];
+      var sx = t.fx * W - state.cam.x, sy = t.fy * H - state.cam.y;
+      ctx.fillStyle = t.c;
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, t.rx, t.ry, 0, 0, 7);
+      ctx.fill();
+    }
+
+    // dirt path: spawn -> shop -> pad -> cave
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "rgba(148, 122, 74, 0.55)";
+    ctx.lineWidth = 40;
+    ctx.beginPath();
+    ctx.moveTo(pathPoints[0][0] - state.cam.x, pathPoints[0][1] - state.cam.y);
+    for (var q = 1; q < pathPoints.length; q++) ctx.lineTo(pathPoints[q][0] - state.cam.x, pathPoints[q][1] - state.cam.y);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(183, 158, 103, 0.5)";
+    ctx.lineWidth = 26;
+    ctx.stroke();
+    ctx.lineJoin = "miter";
+    ctx.lineCap = "butt";
+    // path pebbles
+    for (var r2 = 0; r2 < pathSpeck.length; r2++) {
+      var ps = pathSpeck[r2];
+      ctx.fillStyle = "rgba(120, 96, 58, 0.4)";
+      ctx.beginPath();
+      ctx.arc(ps.x - state.cam.x, ps.y - state.cam.y, ps.r, 0, 7);
+      ctx.fill();
+    }
+
+    // grass speckle
+    for (var j = 0; j < grassSpeck.length; j++) {
+      var gs = grassSpeck[j];
+      ctx.globalAlpha = gs.a;
+      ctx.fillStyle = gs.c;
+      ctx.beginPath();
+      ctx.arc(gs.fx * W - state.cam.x, gs.fy * H - state.cam.y, gs.r, 0, 7);
+      ctx.fill();
+    }
+    // flowers
+    for (var k = 0; k < flowers.length; k++) {
+      var fl = flowers[k];
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = fl.c;
+      ctx.beginPath();
+      ctx.arc(fl.fx * W - state.cam.x, fl.fy * H - state.cam.y, fl.r, 0, 7);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // interactive grass patches (easter egg)
+    for (var i2 = 0; i2 < patches.length; i2++) {
+      var p = patches[i2];
+      var px = p.fx * W - state.cam.x, py = p.fy * H - state.cam.y;
       ctx.fillStyle = "rgba(122, " + p.g + ", 66, " + p.a + ")";
       ctx.beginPath();
-      ctx.arc(sx, sy, p.r, 0, 7);
+      ctx.arc(px, py, p.r, 0, 7);
       ctx.fill();
       if (p.caught) {
         ctx.strokeStyle = "rgba(19, 22, 16, 0.5)";
         ctx.lineWidth = 2;
         ctx.setLineDash([5, 5]);
         ctx.beginPath();
-        ctx.arc(sx, sy, p.r + 7, 0, 7);
+        ctx.arc(px, py, p.r + 7, 0, 7);
         ctx.stroke();
         ctx.setLineDash([]);
       }
@@ -1134,41 +1257,121 @@
     ctx.textAlign = "start";
   }
 
-  // cave interior background (world-anchored)
+  // cave interior background (world-anchored, same size as the surface map)
   function drawCave() {
+    // dark rocky base
     ctx.fillStyle = "#1d1a15";
     ctx.fillRect(-state.cam.x, -state.cam.y, CW, CH);
-    // subtle floor patches
-    for (var i = 0; i < cavePatches.length; i++) {
-      var p = cavePatches[i];
-      var sx = p.fx * CW - state.cam.x, sy = p.fy * CH - state.cam.y;
-      ctx.fillStyle = "rgba(255, 255, 255, 0.025)";
+
+    // torch light pools (warm glow, subtle flicker)
+    for (var t = 0; t < torchSpots.length; t++) {
+      var tp = torchSpots[t];
+      var tx = tp.fx * CW, ty = tp.fy * CH;
+      var flick = 0.85 + 0.15 * Math.sin(T * 6 + t * 2.1);
+      var lg = ctx.createRadialGradient(tx - state.cam.x, ty - state.cam.y, 20, tx - state.cam.x, ty - state.cam.y, 300 * flick);
+      lg.addColorStop(0, "rgba(255, 176, 84, 0.14)");
+      lg.addColorStop(1, "rgba(255, 176, 84, 0)");
+      ctx.fillStyle = lg;
+      ctx.fillRect(tx - state.cam.x - 300, ty - state.cam.y - 300, 600, 600);
+    }
+
+    // floor pebbles
+    for (var pe = 0; pe < cavePebbles.length; pe++) {
+      var cb = cavePebbles[pe];
+      ctx.fillStyle = "rgba(190, 180, 160, " + cb.a + ")";
       ctx.beginPath();
-      ctx.ellipse(sx, sy, p.r, p.r * 0.55, 0, 0, 7);
+      ctx.arc(cb.fx * CW - state.cam.x, cb.fy * CH - state.cam.y, cb.r, 0, 7);
       ctx.fill();
     }
-    // stalactites
+
+    // ambient crystal clusters
+    for (var cr = 0; cr < crystals.length; cr++) {
+      var cy = crystals[cr];
+      var cx = cy.fx * CW, cyy = cy.fy * CH;
+      var glow = 0.5 + 0.5 * Math.sin(T * 2 + cr * 1.7);
+      ctx.fillStyle = "rgba(255,255,255,0.05)";
+      ctx.beginPath();
+      ctx.arc(cx - state.cam.x, cyy - state.cam.y, 26 + glow * 8, 0, 7);
+      ctx.fill();
+      ctx.fillStyle = cy.c;
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath();
+      ctx.moveTo(cx - state.cam.x, cyy - state.cam.y - cy.s * 2.4);
+      ctx.lineTo(cx - state.cam.x + cy.s * 0.8, cyy - state.cam.y);
+      ctx.lineTo(cx - state.cam.x, cyy - state.cam.y + cy.s * 2.4);
+      ctx.lineTo(cx - state.cam.x - cy.s * 0.8, cyy - state.cam.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // stalactites hanging from the ceiling
     for (var j = 0; j < stalactites.length; j++) {
       var st = stalactites[j];
       var ssx = st.fx * CW - state.cam.x;
+      var sy = -state.cam.y;
       ctx.fillStyle = "#2a2620";
       ctx.beginPath();
-      ctx.moveTo(ssx - 22, -state.cam.y);
-      ctx.lineTo(ssx + 22, -state.cam.y);
-      ctx.lineTo(ssx, -state.cam.y + 60 + st.fy * 40);
+      ctx.moveTo(ssx - st.w / 2, sy);
+      ctx.lineTo(ssx + st.w / 2, sy);
+      ctx.lineTo(ssx, sy + st.h);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.05)";
+      ctx.beginPath();
+      ctx.moveTo(ssx - st.w / 4, sy);
+      ctx.lineTo(ssx + st.w / 4, sy);
+      ctx.lineTo(ssx, sy + st.h * 0.7);
       ctx.closePath();
       ctx.fill();
     }
+    // stalagmites rising from the floor
+    for (var sg = 0; sg < stalagmites.length; sg++) {
+      var sm = stalagmites[sg];
+      var smx = sm.fx * CW - state.cam.x;
+      var smy = CH - state.cam.y;
+      ctx.fillStyle = "#2a2620";
+      ctx.beginPath();
+      ctx.moveTo(smx - sm.w / 2, smy);
+      ctx.lineTo(smx + sm.w / 2, smy);
+      ctx.lineTo(smx, smy - sm.h);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.04)";
+      ctx.beginPath();
+      ctx.moveTo(smx - sm.w / 4, smy);
+      ctx.lineTo(smx + sm.w / 4, smy);
+      ctx.lineTo(smx, smy - sm.h * 0.6);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // rocky walls around the perimeter
+    for (var w = 0; w < caveWalls.length; w++) {
+      var cw = caveWalls[w];
+      var wx = cw.x - state.cam.x, wy = cw.y - state.cam.y;
+      ctx.fillStyle = "#322d26";
+      ctx.beginPath();
+      ctx.arc(wx, wy, cw.r, 0, 7);
+      ctx.fill();
+      ctx.fillStyle = "#26211c";
+      ctx.beginPath();
+      ctx.arc(wx - cw.r * 0.3, wy + cw.r * 0.15, cw.r * 0.55, 0, 7);
+      ctx.fill();
+    }
+
     // light from the entrance (left edge)
-    var lg = ctx.createRadialGradient(0 - state.cam.x + 40, 450 - state.cam.y, 10, 0 - state.cam.x + 40, 450 - state.cam.y, 260);
-    lg.addColorStop(0, "rgba(214, 226, 190, 0.16)");
-    lg.addColorStop(1, "rgba(214, 226, 190, 0)");
-    ctx.fillStyle = lg;
-    ctx.fillRect(-state.cam.x, 450 - state.cam.y - 260, 320, 520);
+    var lg2 = ctx.createRadialGradient(0 - state.cam.x + 40, 450 - state.cam.y, 10, 0 - state.cam.x + 40, 450 - state.cam.y, 300);
+    lg2.addColorStop(0, "rgba(214, 226, 190, 0.2)");
+    lg2.addColorStop(1, "rgba(214, 226, 190, 0)");
+    ctx.fillStyle = lg2;
+    ctx.fillRect(-state.cam.x, 450 - state.cam.y - 300, 400, 600);
+
     // world border
-    ctx.strokeStyle = "rgba(0,0,0,0.55)";
+    ctx.strokeStyle = "rgba(0,0,0,0.6)";
     ctx.lineWidth = 8;
     ctx.strokeRect(-state.cam.x, -state.cam.y, CW, CH);
+
     // exit opening on the left edge
     var es = worldToScreen(0, 450);
     ctx.fillStyle = "#0e0c09";
@@ -1179,10 +1382,15 @@
     ctx.beginPath();
     ctx.ellipse(es.x + 10, es.y, 36, 58, 0, 0, 7);
     ctx.fill();
+    // torch next to the exit
+    ctx.fillStyle = "rgba(255, 176, 84, 0.25)";
+    ctx.beginPath();
+    ctx.arc(es.x + 66, es.y - 6, 22 + Math.sin(T * 7) * 4, 0, 7);
+    ctx.fill();
     ctx.fillStyle = "#b9c185";
     ctx.font = "bold 12px Montserrat, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("EXIT →", es.x + 90, es.y);
+    ctx.fillText("EXIT →", es.x + 100, es.y);
     ctx.textAlign = "start";
   }
 

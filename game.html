@@ -193,6 +193,28 @@
   @media (pointer: coarse) {
     .touch-pad { display: grid; grid-template-columns: repeat(4, 54px); }
   }
+
+  /* ---------- olive bubble cursor ---------- */
+  .cursor-bubble {
+    position: fixed;
+    top: 0; left: 0;
+    width: 32px; height: 32px;
+    margin: -16px 0 0 -16px;
+    border-radius: 50%;
+    background: rgba(128, 131, 54, 0.16);
+    border: 2px solid rgba(128, 131, 54, 0.85);
+    box-shadow: 0 0 18px rgba(128, 131, 54, 0.35);
+    pointer-events: none;
+    z-index: 400;
+    opacity: 0;
+    will-change: transform;
+  }
+  html.has-bubble, html.has-bubble body, html.has-bubble canvas { cursor: none; }
+  html.has-bubble a, html.has-bubble button { cursor: none; }
+  @media (pointer: coarse) {
+    .cursor-bubble { display: none; }
+    html.has-bubble, html.has-bubble body { cursor: auto; }
+  }
 </style>
 </head>
 <body>
@@ -981,6 +1003,39 @@
     }
     requestAnimationFrame(frame);
   }
+
+  /* ---------- olive bubble cursor ---------- */
+  (function () {
+    if (!window.matchMedia) return;
+    if (window.matchMedia("(pointer: coarse)").matches) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var el = document.createElement("div");
+    el.className = "cursor-bubble";
+    document.body.appendChild(el);
+    document.documentElement.classList.add("has-bubble");
+    var mx = -100, my = -100, x = -100, y = -100, hover = false;
+    document.addEventListener("mousemove", function (e) {
+      mx = e.clientX;
+      my = e.clientY;
+      el.style.opacity = "1";
+    });
+    document.addEventListener("mouseout", function (e) {
+      if (!e.relatedTarget) el.style.opacity = "0";
+    });
+    document.addEventListener("mouseover", function (e) {
+      hover = !!e.target.closest("a, button, .touch-pad button");
+    });
+    document.addEventListener("mouseout", function (e) {
+      if (e.relatedTarget) hover = false;
+    });
+    function loop() {
+      x += (mx - x) * 0.22;
+      y += (my - y) * 0.22;
+      el.style.transform = "translate(" + x + "px," + y + "px) scale(" + (hover ? 1.6 : 1) + ")";
+      requestAnimationFrame(loop);
+    }
+    loop();
+  })();
 
   /* ---------- boot ---------- */
   window.addEventListener("resize", fit);

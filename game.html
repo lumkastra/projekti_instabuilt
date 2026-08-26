@@ -374,7 +374,7 @@
           wps.push({ fx: 0.08 + Math.random() * 0.84, fy: 0.12 + Math.random() * 0.76, x: 0, y: 0 });
         }
       }
-      return { fx: fx, fy: fy, x: 0, y: 0, type: type, wps: wps, wpi: 0, speed: cfg.speed, active: false, face: 0, step: 0 };
+      return { fx: fx, fy: fy, x: 0, y: 0, type: type, wps: wps, wpi: 0, speed: cfg.speed, active: true, face: 0, step: 0 };
     };
     for (var p = 0; p < cfg.patrol; p++) state.enemies.push(mkEnemy(0.5, 0.25, "patrol"));
     for (var c = 0; c < cfg.chaser; c++) state.enemies.push(mkEnemy(0.3 + Math.random() * 0.4, 0.2, "chaser"));
@@ -461,9 +461,9 @@
     var p = drag.patch;
     p.caught = false;
     if (drag.moved < 8) {
-      // plain left-click: random green intensity + a little pop
-      p.g = Math.round(80 + Math.random() * 105);
-      p.a = +(0.08 + Math.random() * 0.26).toFixed(3);
+      // plain left-click: small but visible nudge of green intensity + a little pop
+      p.g = Math.max(100, Math.min(180, p.g + Math.round(Math.random() * 30 - 15)));
+      p.a = +(Math.max(0.08, Math.min(0.3, p.a + Math.random() * 0.08 - 0.04))).toFixed(3);
       p.pop = 1;
     }
     drag.on = false;
@@ -516,7 +516,6 @@
   function updateEnemies(dt) {
     var c = state.char;
     state.enemies.forEach(function (e) {
-      if (!e.active) { e.step += dt * 2; return; }
       var dx = c.x - e.x, dy = c.y - e.y;
       var d = Math.hypot(dx, dy);
       var chasing = e.type === "chaser" || (e.type === "patrol" && d < 170);
@@ -534,25 +533,41 @@
       var sp = e.speed * (1 + state.planted * 0.09);
       var nx = e.x + vx * sp * dt;
       var ny = e.y + vy * sp * dt;
+      var moved = false;
       if (!blockedByTree(nx, ny)) {
         e.x = Math.max(18, Math.min(W - 18, nx));
         e.y = Math.max(18, Math.min(H - 18, ny));
-      } else {
-        // blocked by a tree: slip around it for a moment
+        moved = true;
+      } else if (!blockedByTree(nx, e.y)) {
+        e.x = Math.max(18, Math.min(W - 18, nx));
+        moved = true;
+      } else if (!blockedByTree(e.x, ny)) {
+        e.y = Math.max(18, Math.min(H - 18, ny));
+        moved = true;
+      }
+      if (!moved) {
+        // wedged against a tree: pick the free perpendicular way around
         if (e.bounce <= 0) {
-          e.bounce = 0.55 + Math.random() * 0.3;
-          e.bounceDir = Math.random() < 0.5 ? -1 : 1;
+          e.bounce = 0.8 + Math.random() * 0.5;
+          var px1 = -vy, py1 = vx;
+          var bx1 = e.x + px1 * 20, by1 = e.y + py1 * 20;
+          var bx2 = e.x - px1 * 20, by2 = e.y - py1 * 20;
+          var free1 = !blockedByTree(bx1, by1) && bx1 > 18 && bx1 < W - 18 && by1 > 18 && by1 < H - 18;
+          var free2 = !blockedByTree(bx2, by2) && bx2 > 18 && bx2 < W - 18 && by2 > 18 && by2 < H - 18;
+          e.bounceDir = free1 && !free2 ? 1 : (free2 && !free1 ? -1 : (Math.random() < 0.5 ? 1 : -1));
         }
+      } else {
+        e.bounce = 0; // moving freely again — cancel any slip
       }
       if (e.bounce > 0) {
         e.bounce -= dt;
-        var px = -vy * e.bounceDir, py = vx * e.bounceDir;
-        var bn = Math.hypot(px, py) || 1;
-        var bx = e.x + (px / bn) * sp * 0.85 * dt;
-        var by = e.y + (py / bn) * sp * 0.85 * dt;
-        if (!blockedByTree(bx, by)) {
-          e.x = Math.max(18, Math.min(W - 18, bx));
-          e.y = Math.max(18, Math.min(H - 18, by));
+        var pxn = -vy * e.bounceDir, pyn = vx * e.bounceDir;
+        var bl = Math.hypot(pxn, pyn) || 1;
+        var bxp = e.x + (pxn / bl) * sp * dt;
+        var byp = e.y + (pyn / bl) * sp * dt;
+        if (!blockedByTree(bxp, byp)) {
+          e.x = Math.max(18, Math.min(W - 18, bxp));
+          e.y = Math.max(18, Math.min(H - 18, byp));
         }
       }
       e.step += dt * 8;
@@ -607,10 +622,6 @@
         h.age = 0;
         state.carrying--;
         state.planted++;
-        if (!state.activated) {
-          state.activated = true;
-          state.enemies.forEach(function (e) { e.active = true; });
-        }
         if (state.planted >= LEVELS[state.level].seeds) levelComplete(h.x, h.y);
       }
     }
@@ -744,20 +755,30 @@
   function drawTree(h) {
     var s = 0.35 + 0.65 * Math.min(1, h.age);
     ctx.fillStyle = "#8a6a45";
-    ctx.fillRect(h.x - 4 * s, h.y - 16 * s, 8 * s, 16 * s);
+    ctx.fillRect(h.x - 5 * s, h.y - 20 * s, 10 * s, 20 * s);
     ctx.fillStyle = "#7c8f3d";
     ctx.beginPath();
-    ctx.arc(h.x, h.y - 22 * s, 17 * s, 0, 7);
+    ctx.arc(h.x, h.y - 28 * s, 24 * s, 0, 7);
     ctx.fill();
     ctx.fillStyle = "#97ab52";
     ctx.beginPath();
-    ctx.arc(h.x - 6 * s, h.y - 27 * s, 11 * s, 0, 7);
+    ctx.arc(h.x - 8 * s, h.y - 34 * s, 15 * s, 0, 7);
     ctx.fill();
-    if (h.age >= 2.2) {
-      ctx.fillStyle = "#d64545";
-      ctx.beginPath(); ctx.arc(h.x - 8, h.y - 30, 3.2, 0, 7); ctx.fill();
-      ctx.beginPath(); ctx.arc(h.x + 7, h.y - 25, 3.2, 0, 7); ctx.fill();
-      ctx.beginPath(); ctx.arc(h.x + 2, h.y - 35, 2.6, 0, 7); ctx.fill();
+    if (h.age >= 0.5) {
+      // ripe cherries, clearly visible
+      var spots = [[-12, -30], [12, -24], [0, -38], [-6, -22], [16, -34]];
+      for (var i = 0; i < spots.length; i++) {
+        var cx = h.x + spots[i][0] * s;
+        var cy = h.y + spots[i][1] * s;
+        ctx.fillStyle = "#d64545";
+        ctx.beginPath();
+        ctx.arc(cx, cy, 4.6 * s, 0, 7);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.beginPath();
+        ctx.arc(cx - 1.5, cy - 1.5, 1.5, 0, 7);
+        ctx.fill();
+      }
     }
   }
 
@@ -825,12 +846,6 @@
     ctx.moveTo(e.x + 5, e.y - 12);
     ctx.quadraticCurveTo(e.x + 8, e.y - 20, e.x + 4, e.y - 22);
     ctx.stroke();
-    if (!e.active) {
-      // dormant: little zzz
-      ctx.fillStyle = "rgba(255,255,255,0.55)";
-      ctx.font = "bold 11px Montserrat, sans-serif";
-      ctx.fillText("z", e.x + 14, e.y - 12);
-    }
   }
 
   function drawChar() {
@@ -901,7 +916,7 @@
     movePlayer(dt);
     updateEnemies(dt);
     interact();
-    state.holes.forEach(function (h) { if (h.planted) h.age += dt / 2.2; });
+    state.holes.forEach(function (h) { if (h.planted) h.age += dt / 4.5; });
     updateHud();
   }
 

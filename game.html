@@ -1572,48 +1572,70 @@
     }
   }
 
-  // cave mouth on the surface (right edge) — stone cave in yellow soil, per reference art
+  // cave mouth on the surface (right edge) — stone arch in yellow soil, faithful to the reference vector
   function drawCaveMouth() {
     var s = worldToScreen(state.caveEnterX, state.caveEnterY);
-    // yellow soil mound around the entrance
+
+    // ---- yellow soil base (low mound at the bottom, like the reference) ----
     ctx.fillStyle = "#a07828";
     ctx.beginPath();
-    ctx.ellipse(s.x, s.y + 20, 150, 120, 0, 0, 7);
+    ctx.ellipse(s.x, s.y + 84, 150, 46, 0, 0, 7);
     ctx.fill();
     ctx.fillStyle = "#b48c28";
     ctx.beginPath();
-    ctx.ellipse(s.x, s.y + 30, 132, 100, 0, 0, 7);
+    ctx.ellipse(s.x, s.y + 88, 132, 38, 0, 0, 7);
     ctx.fill();
     ctx.fillStyle = "#c4a040";
     ctx.beginPath();
-    ctx.ellipse(s.x, s.y + 38, 112, 82, 0, 0, 7);
+    ctx.ellipse(s.x, s.y + 91, 108, 28, 0, 0, 7);
     ctx.fill();
     // soil speckles
-    ctx.fillStyle = "rgba(120, 88, 28, 0.35)";
-    for (var sp = 0; sp < 24; sp++) {
-      var a = Math.random() * 6.28, rr = 30 + Math.random() * 100;
+    ctx.fillStyle = "rgba(120, 88, 28, 0.4)";
+    for (var sp = 0; sp < 20; sp++) {
+      var a = Math.random() * 6.28, rr = 20 + Math.random() * 110;
       ctx.beginPath();
-      ctx.arc(s.x + Math.cos(a) * rr, s.y + 30 + Math.sin(a) * rr * 0.7, 2 + Math.random() * 2.5, 0, 7);
+      ctx.arc(s.x + Math.cos(a) * rr, s.y + 88 + Math.sin(a) * rr * 0.4, 1.8 + Math.random() * 2.2, 0, 7);
       ctx.fill();
     }
-    // dark passage (black opening) — the cave mouth
-    var og = ctx.createRadialGradient(s.x, s.y + 4, 8, s.x, s.y + 4, 95);
+
+    // ---- dark passage: vertical black opening that widens downward ----
+    var og = ctx.createRadialGradient(s.x, s.y + 10, 10, s.x, s.y + 10, 100);
     og.addColorStop(0, "#000000");
-    og.addColorStop(0.7, "#0a0a0a");
-    og.addColorStop(1, "#1a1a18");
+    og.addColorStop(0.65, "#0a0a0a");
+    og.addColorStop(1, "#1c1c18");
     ctx.fillStyle = og;
     ctx.beginPath();
-    ctx.ellipse(s.x, s.y + 4, 52, 84, 0, 0, 7);
+    ctx.moveTo(s.x - 46, s.y - 40);
+    ctx.quadraticCurveTo(s.x - 62, s.y + 20, s.x - 38, s.y + 78);
+    ctx.lineTo(s.x + 38, s.y + 78);
+    ctx.quadraticCurveTo(s.x + 62, s.y + 20, s.x + 46, s.y - 40);
+    ctx.quadraticCurveTo(s.x, s.y - 62, s.x - 46, s.y - 40);
+    ctx.closePath();
     ctx.fill();
-    // big rounded grey stones framing the passage (like the reference vector)
-    var rocks = [
-      [-82, -40, 26], [82, -44, 25], [-96, 6, 24], [96, 6, 24],
-      [-84, 52, 25], [84, 54, 24], [-58, -80, 26], [58, -84, 25], [0, -96, 28],
-      [-20, -104, 18], [20, -106, 17], [-100, -10, 16], [100, -12, 15],
-      [-70, 86, 18], [70, 88, 17], [-30, 96, 20], [30, 98, 19]
+
+    // ---- grey rounded boulders forming an arch over the passage ----
+    // arch ring: left side up to the top and down the right side, plus base rocks
+    var arch = [
+      // base / sides (biggest stones)
+      [-96, 44, 30], [96, 44, 30],
+      [-104, 8, 27], [104, 8, 27],
+      [-92, -32, 26], [92, -32, 26],
+      // rising to the top
+      [-68, -64, 24], [68, -64, 24],
+      [-34, -88, 24], [34, -88, 24],
+      // keystone at the top
+      [0, -102, 28],
+      [-16, -112, 16], [16, -112, 15],
+      // inner ring for thickness
+      [-70, 26, 20], [70, 26, 20],
+      [-52, -22, 18], [52, -22, 18],
+      // base rocks sitting on the soil
+      [-60, 74, 20], [60, 74, 20], [-18, 82, 18], [18, 82, 18], [0, 78, 16],
+      // extra small rocks scattered
+      [-120, 60, 14], [120, 62, 14], [-110, -56, 13], [110, -58, 12]
     ];
-    for (var i = 0; i < rocks.length; i++) {
-      var r = rocks[i];
+    for (var i = 0; i < arch.length; i++) {
+      var r = arch[i];
       ctx.fillStyle = "#646450";
       ctx.beginPath();
       ctx.arc(s.x + r[0], s.y + r[1], r[2], 0, 7);
@@ -1622,36 +1644,42 @@
       ctx.beginPath();
       ctx.arc(s.x + r[0] - 3, s.y + r[1] + 4, r[2] * 0.62, 0, 7);
       ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.14)";
+      ctx.fillStyle = "rgba(255,255,255,0.16)";
       ctx.beginPath();
-      ctx.arc(s.x + r[0] + 3, s.y + r[1] - 4, r[2] * 0.3, 0, 7);
+      ctx.arc(s.x + r[0] + 4, s.y + r[1] - 5, r[2] * 0.28, 0, 7);
       ctx.fill();
     }
-    // inner shadow ring around the passage (depth)
-    ctx.strokeStyle = "rgba(30, 26, 16, 0.55)";
-    ctx.lineWidth = 6;
+    // soft shading under the arch (depth inside the passage mouth)
+    ctx.strokeStyle = "rgba(30, 24, 14, 0.5)";
+    ctx.lineWidth = 7;
     ctx.beginPath();
-    ctx.ellipse(s.x, s.y + 4, 58, 90, 0, 0, 7);
+    ctx.moveTo(s.x - 52, s.y - 34);
+    ctx.quadraticCurveTo(s.x - 66, s.y + 24, s.x - 44, s.y + 74);
     ctx.stroke();
-    // small grass tufts peeking at the base of the mound
+    ctx.beginPath();
+    ctx.moveTo(s.x + 52, s.y - 34);
+    ctx.quadraticCurveTo(s.x + 66, s.y + 24, s.x + 44, s.y + 74);
+    ctx.stroke();
+
+    // small grass tufts at the base of the soil
     ctx.fillStyle = "#7c8f3d";
-    for (var g = 0; g < 6; g++) {
+    for (var g = 0; g < 5; g++) {
       ctx.beginPath();
-      ctx.arc(s.x - 108 + g * 44, s.y + 104, 9, 0, 7);
+      ctx.arc(s.x - 96 + g * 48, s.y + 116, 8, 0, 7);
       ctx.fill();
     }
-    // sign on a wooden post
+    // sign on a wooden post, off to the side (doesn't cover the arch)
     ctx.fillStyle = "#5a3d24";
-    ctx.fillRect(s.x - 132, s.y - 64, 5, 34);
+    ctx.fillRect(s.x - 148, s.y - 40, 5, 32);
     ctx.fillStyle = "#f4f2ed";
-    ctx.fillRect(s.x - 168, s.y - 86, 76, 24);
+    ctx.fillRect(s.x - 184, s.y - 62, 76, 24);
     ctx.strokeStyle = "#6f7231";
     ctx.lineWidth = 2;
-    ctx.strokeRect(s.x - 168, s.y - 86, 76, 24);
+    ctx.strokeRect(s.x - 184, s.y - 62, 76, 24);
     ctx.fillStyle = "#5f6327";
     ctx.font = "bold 12px Montserrat, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("CAVE", s.x - 130, s.y - 69);
+    ctx.fillText("CAVE", s.x - 146, s.y - 45);
     ctx.textAlign = "start";
   }
 

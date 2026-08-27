@@ -432,7 +432,7 @@
   var SEA_Y = 1420;            // water starts here
   var SHIP_X = 1150, SHIP_Y = 1510;  // decorative ship
   var DOCK_X = 700, DOCK_Y = 1570;   // dock end (pilings reach the water)
-  var FISH_Y = 1520;                 // fishing spot: platform in front of the hut
+  var FISH_Y = 1550;                 // fishing spot at the end platform
   var VW = 960, VH = 700;      // viewport (css px)
   var DPR = 1;
 
@@ -447,7 +447,7 @@
     cam: { x: 0, y: 0 },
     inv: { wood: 0, stone: 0, coins: 0, foundation: 0, panels: 0, window: 0, iron: 0, coal: 0, copper: 0, diamond: 0, fish: 0, rod: 0 },
     total: { wood: 0, stone: 0, coins: 0, iron: 0, coal: 0, copper: 0, diamond: 0, fish: 0 },
-    trees: [], ores: [],
+    trees: [], ores: [], chests: [],
     npc: { x: 660, y: 560 },
     pad: { x: 1760, y: 420 },
     cave: false,             // inside the cave?
@@ -527,6 +527,71 @@
     });
   }
 
+  // hidden mineshafts with loot chests, regenerated on every cave entry
+  function genChests() {
+    state.chests = [];
+    var plan = [
+      { min: 2, max: 3 }  // 2-3 hidden shafts per visit
+    ];
+    plan.forEach(function (g) {
+      var n = g.min + Math.floor(Math.random() * (g.max - g.min + 1));
+      var tries = 0;
+      while (n > 0 && tries < 500) {
+        tries++;
+        var x = 180 + Math.random() * (CW - 360);
+        var y = 140 + Math.random() * (CH - 280);
+        if (Math.hypot(x - state.caveSpawnX, y - state.caveSpawnY) < 300) continue;
+        if (!farFrom(x, y, state.chests, 260)) continue;
+        if (!farFrom(x, y, state.ores, 90)) continue;
+        state.chests.push({ x: x, y: y, opened: false, seed: Math.random() * 10 });
+        n--;
+      }
+    });
+  }
+
+  var CHEST_LOOT = [
+    { kind: "iron", amt: [2, 4], w: 3 },
+    { kind: "coal", amt: [3, 6], w: 3 },
+    { kind: "copper", amt: [1, 3], w: 2 },
+    { kind: "diamond", amt: [1, 2], w: 1 },
+    { kind: "coins", amt: [25, 70], w: 3 }
+  ];
+  function openChest(c) {
+    if (c.opened) {
+      showHint("This chest is empty.");
+      return;
+    }
+    c.opened = true;
+    // pick 1-2 loot items (weighted toward common)
+    var picks = [];
+    var totalW = 0;
+    CHEST_LOOT.forEach(function (l) { totalW += l.w; });
+    var n = 1 + (Math.random() < 0.5 ? 1 : 0);
+    for (var i = 0; i < n; i++) {
+      var roll = Math.random() * totalW, acc = 0, chosen = CHEST_LOOT[0];
+      for (var j = 0; j < CHEST_LOOT.length; j++) {
+        acc += CHEST_LOOT[j].w;
+        if (roll < acc) { chosen = CHEST_LOOT[j]; break; }
+      }
+      var amt = chosen.amt[0] + Math.floor(Math.random() * (chosen.amt[1] - chosen.amt[0] + 1));
+      picks.push({ kind: chosen.kind, amt: amt });
+    }
+    picks.forEach(function (p, idx) {
+      var fy = c.y - 44 - idx * 18;
+      if (p.kind === "coins") {
+        state.inv.coins += p.amt;
+        state.total.coins += p.amt;
+        addFloat(c.x, fy, "+" + p.amt + " coins", "#e9d37a");
+      } else {
+        state.inv[p.kind] += p.amt;
+        state.total[p.kind] += p.amt;
+        addFloat(c.x, fy, "+" + p.amt + " " + p.kind, ORE_COLORS[p.kind]);
+      }
+    });
+    addFloat(c.x, c.y - 70, "Loot!", "#a8b96a");
+    updateHud();
+  }
+
   function reset() {
     state.inv.wood = 0; state.inv.stone = 0; state.inv.coins = 0;
     state.inv.foundation = 0; state.inv.panels = 0; state.inv.window = 0;
@@ -550,6 +615,7 @@
     state.cave = false;
     state.trees = [];
     state.ores = [];
+    state.chests = [];
     genTrees();
     document.getElementById("shop").classList.add("hidden");
     document.getElementById("startOverlay").classList.add("hidden");
@@ -612,6 +678,7 @@
     var spots = [];
     if (state.cave) {
       state.ores.forEach(function (o) { if (o.alive) spots.push({ x: o.x, y: o.y, kind: "ore", ref: o }); });
+      state.chests.forEach(function (c) { spots.push({ x: c.x, y: c.y, kind: "chest", ref: c }); });
       // cave exit at the left edge
       spots.push({ x: 60, y: 450, kind: "caveExit" });
     } else {
@@ -643,6 +710,7 @@
   function interactWith(t) {
     if (t.kind === "tree") startGather(t.ref, "tree");
     else if (t.kind === "ore") startGather(t.ref, "ore");
+    else if (t.kind === "chest") openChest(t.ref);
     else if (t.kind === "npc") openShop();
     else if (t.kind === "pad") startBuild();
     else if (t.kind === "caveEnter") enterCave();
@@ -672,6 +740,7 @@
       state.player.y = state.caveSpawnY;
       state.player.moving = false;
       genOres(); // fresh ore layout every entry
+      genChests(); // hidden mineshaft chests reset every entry
       updateHud();
     });
   }
@@ -687,6 +756,7 @@
       state.player.y = state.caveEnterY;
       state.player.moving = false;
       state.ores = []; // reset on leave too
+      state.chests = [];
       updateHud();
     });
   }
@@ -1032,6 +1102,7 @@
     if (t && state.running) {
       var txt = t.kind === "tree" ? "E — Chop tree"
         : t.kind === "ore" ? "E — Mine " + t.ref.kind + (t.ref.kind === "stone" ? "" : " ore")
+        : t.kind === "chest" ? (t.ref.opened ? "E — Empty chest" : "E — Open the chest")
         : t.kind === "npc" ? "E — Talk to Shopkeeper"
         : t.kind === "pad" ? "E — Build Pop-Up"
         : t.kind === "caveEnter" ? "E — Enter the cave"
@@ -1359,14 +1430,16 @@
     ctx.fillRect(sx - 8, sy + 16, 16, 26);
   }
 
-  // wooden fishing pier with a small hut at the end (Stardew-style)
+  // flat 2D wooden dock with very detailed pine wood planks
   function drawDock() {
     var dx = DOCK_X - state.cam.x;
     var top = SAND_Y - state.cam.y, bottom = DOCK_Y + 10 - state.cam.y;
     if (dx < -240 || dx > VW + 240 || bottom < 0 || top > VH) return;
+
     // water shadow under the dock
     ctx.fillStyle = "rgba(0, 40, 80, 0.35)";
     ctx.fillRect(dx - 92, top, 184, bottom - top);
+
     // pilings (thick posts in the water)
     ctx.fillStyle = "#4a3018";
     for (var post = -4; post <= 4; post++) {
@@ -1377,119 +1450,122 @@
       ctx.fillRect(px - 4, top + 12, 3, bottom - top - 14);
       ctx.fillStyle = "#4a3018";
     }
-    // deck planks (light, horizontal — Stardew palette)
-    ctx.fillStyle = "#b07030";
+
+    // ---- detailed pine wood deck ----
+    // base pine tone
+    ctx.fillStyle = "#c99b55";
     ctx.fillRect(dx - 92, top, 184, bottom - top);
-    ctx.fillStyle = "#c08040";
-    ctx.fillRect(dx - 92, top, 184, 10);
-    // plank seams (horizontal lines)
-    ctx.strokeStyle = "rgba(90, 55, 20, 0.5)";
+    // lighter top sheen
+    ctx.fillStyle = "#d9ad68";
+    ctx.fillRect(dx - 92, top, 184, 12);
+
+    // pine grain: long flowing grain lines (lighter streaks)
+    ctx.strokeStyle = "rgba(255, 235, 190, 0.35)";
     ctx.lineWidth = 2;
-    for (var seam = 1; seam < 14; seam++) {
-      var syy = top + 14 + seam * ((bottom - top - 22) / 13);
+    for (var gl = 0; gl < 8; gl++) {
+      var gy = top + 20 + gl * ((bottom - top - 30) / 7);
       ctx.beginPath();
-      ctx.moveTo(dx - 88, syy);
-      ctx.lineTo(dx + 88, syy);
+      for (var gx = dx - 88; gx <= dx + 88; gx += 12) {
+        var gyy = gy + Math.sin(gx * 0.05 + gl * 1.4) * 3;
+        if (gx === dx - 88) ctx.moveTo(gx, gyy);
+        else ctx.lineTo(gx, gyy);
+      }
       ctx.stroke();
     }
-    // plank end-caps (vertical seams, alternating)
-    ctx.strokeStyle = "rgba(90, 55, 20, 0.35)";
+    // darker grain lines
+    ctx.strokeStyle = "rgba(120, 80, 30, 0.4)";
+    ctx.lineWidth = 1.2;
+    for (var gd = 0; gd < 9; gd++) {
+      var gy2 = top + 26 + gd * ((bottom - top - 34) / 8);
+      ctx.beginPath();
+      for (var gx2 = dx - 86; gx2 <= dx + 86; gx2 += 10) {
+        var gyy2 = gy2 + Math.cos(gx2 * 0.045 + gd * 1.7) * 2.5;
+        if (gx2 === dx - 86) ctx.moveTo(gx2, gyy2);
+        else ctx.lineTo(gx2, gyy2);
+      }
+      ctx.stroke();
+    }
+
+    // plank seams (horizontal divisions between boards)
+    ctx.strokeStyle = "rgba(90, 55, 20, 0.55)";
+    ctx.lineWidth = 2.5;
+    for (var seam = 1; seam < 15; seam++) {
+      var syy = top + 15 + seam * ((bottom - top - 24) / 14);
+      ctx.beginPath();
+      ctx.moveTo(dx - 90, syy);
+      ctx.lineTo(dx + 90, syy);
+      ctx.stroke();
+    }
+
+    // plank end-caps (vertical seams, staggered like real boards)
+    ctx.strokeStyle = "rgba(90, 55, 20, 0.3)";
     ctx.lineWidth = 1.5;
-    for (var cap = 0; cap < 9; cap++) {
-      var cxx = dx - 84 + cap * 20;
+    for (var cap = 0; cap < 12; cap++) {
+      var cxx = dx - 86 + cap * 16;
       ctx.beginPath();
       ctx.moveTo(cxx, top + 12);
-      ctx.lineTo(cxx, bottom - 10);
+      ctx.lineTo(cxx, bottom - 12);
       ctx.stroke();
     }
 
-    // ---- fishing hut at the end of the pier ----
-    var hx = dx, hy = bottom - 46; // hut floor sits near the water line
-    // hut shadow on the deck
-    ctx.fillStyle = "rgba(0,0,0,0.15)";
-    ctx.fillRect(hx - 44, hy + 2, 88, 10);
-    // back wall
-    ctx.fillStyle = "#704030";
-    ctx.fillRect(hx - 40, hy - 38, 80, 38);
-    // wall planks (vertical)
-    ctx.strokeStyle = "rgba(50, 25, 10, 0.45)";
-    ctx.lineWidth = 2;
-    for (var wp = -3; wp <= 3; wp++) {
-      var wxx = hx + wp * 12;
+    // pine knots (oval rings with dark centres)
+    var knots = [
+      [-60, top + 60], [30, top + 120], [-20, top + 200],
+      [55, top + 80], [-45, top + 170], [10, top + 260]
+    ];
+    for (var kn = 0; kn < knots.length; kn++) {
+      var kx = knots[kn][0], ky = knots[kn][1];
+      ctx.fillStyle = "#8a5a28";
       ctx.beginPath();
-      ctx.moveTo(wxx, hy - 36);
-      ctx.lineTo(wxx, hy);
+      ctx.ellipse(kx, ky, 4, 6, 0, 0, 7);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(120, 80, 30, 0.5)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(kx, ky, 7, 9, 0, 0, 7);
       ctx.stroke();
     }
-    // roof (dark, with overhang)
-    ctx.fillStyle = "#4a3018";
-    ctx.beginPath();
-    ctx.moveTo(hx - 56, hy - 34);
-    ctx.lineTo(hx + 56, hy - 34);
-    ctx.lineTo(hx + 44, hy - 54);
-    ctx.lineTo(hx - 44, hy - 54);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = "#5a3d24";
-    ctx.beginPath();
-    ctx.moveTo(hx - 44, hy - 52);
-    ctx.lineTo(hx + 44, hy - 52);
-    ctx.lineTo(hx + 34, hy - 66);
-    ctx.lineTo(hx - 34, hy - 66);
-    ctx.closePath();
-    ctx.fill();
-    // roof ridge highlight
-    ctx.fillStyle = "rgba(255,255,255,0.12)";
-    ctx.fillRect(hx - 34, hy - 66, 68, 3);
-    // doorway (dark opening)
-    ctx.fillStyle = "#1c120a";
-    ctx.fillRect(hx - 12, hy - 24, 24, 24);
-    // door frame
-    ctx.strokeStyle = "#8a5f38";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(hx - 12, hy - 24, 24, 24);
-    // window with warm glow
-    ctx.fillStyle = "#f2d080";
-    ctx.fillRect(hx + 16, hy - 30, 12, 10);
-    ctx.strokeStyle = "#5a3d24";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(hx + 16, hy - 30, 12, 10);
-    ctx.beginPath(); ctx.moveTo(hx + 22, hy - 30); ctx.lineTo(hx + 22, hy - 20); ctx.stroke();
-    // small chimney
-    ctx.fillStyle = "#3d2a17";
-    ctx.fillRect(hx - 26, hy - 60, 8, 8);
-    // lantern beside the door with warm glow
-    ctx.fillStyle = "#4a321c";
-    ctx.fillRect(hx + 28, hy - 22, 4, 12);
-    ctx.fillStyle = "rgba(255, 200, 90, 0.65)";
-    ctx.beginPath();
-    ctx.arc(hx + 30, hy - 24, 4 + Math.sin(T * 3) * 1.2, 0, 7);
-    ctx.fill();
-    ctx.fillStyle = "rgba(255, 220, 130, 0.15)";
-    ctx.beginPath();
-    ctx.arc(hx + 30, hy - 24, 18, 0, 7);
-    ctx.fill();
-    // crate beside the hut
-    ctx.fillStyle = "#8a5f38";
-    ctx.fillRect(hx - 56, hy - 16, 16, 16);
-    ctx.strokeStyle = "#5a3d24";
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(hx - 56, hy - 16, 16, 16);
-    ctx.beginPath(); ctx.moveTo(hx - 48, hy - 16); ctx.lineTo(hx - 48, hy); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(hx - 56, hy - 8); ctx.lineTo(hx - 40, hy - 8); ctx.stroke();
-    // rope coil near the door
-    ctx.strokeStyle = "#c9b483";
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.arc(hx + 52, hy - 6, 7, 0, 7);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(hx + 52, hy - 6, 3.5, 0, 7);
-    ctx.stroke();
 
-    // fishing bobber when actively fishing (cast from the hut platform)
+    // nail heads along the seams
+    ctx.fillStyle = "rgba(60, 40, 15, 0.6)";
+    for (var nail = 0; nail < 10; nail++) {
+      var nxx = dx - 80 + nail * 18;
+      var nyy = top + 20 + (nail % 2) * ((bottom - top - 40) / 2);
+      ctx.beginPath();
+      ctx.arc(nxx, nyy, 1.6, 0, 7);
+      ctx.fill();
+    }
+
+    // worn patches (slightly darker, weathered areas)
+    ctx.fillStyle = "rgba(120, 80, 30, 0.12)";
+    ctx.beginPath();
+    ctx.ellipse(dx - 40, top + 90, 30, 12, 0.3, 0, 7);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(dx + 45, top + 200, 26, 10, -0.4, 0, 7);
+    ctx.fill();
+
+    // end platform (slightly wider, for fishing)
+    ctx.fillStyle = "#bd9048";
+    ctx.fillRect(dx - 46, bottom - 16, 92, 16);
+    ctx.fillStyle = "#d9ad68";
+    ctx.fillRect(dx - 46, bottom - 16, 92, 4);
+    ctx.strokeStyle = "rgba(90, 55, 20, 0.4)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(dx - 40, bottom - 6); ctx.lineTo(dx + 40, bottom - 6); ctx.stroke();
+
+    // small wooden crate on the dock
+    ctx.fillStyle = "#a5764a";
+    ctx.fillRect(dx - 64, top + 34, 20, 16);
+    ctx.strokeStyle = "#6b4a2b";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(dx - 64, top + 34, 20, 16);
+    ctx.beginPath(); ctx.moveTo(dx - 54, top + 34); ctx.lineTo(dx - 54, top + 50); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(dx - 64, top + 42); ctx.lineTo(dx - 44, top + 42); ctx.stroke();
+
+    // fishing bobber when actively fishing (cast from the end platform)
     if (state.fish) {
-      var bb = dx + 108, bby = bottom - 18 + Math.sin(T * 2.5) * 3;
+      var bb = dx + 96, bby = bottom - 6 + Math.sin(T * 2.5) * 3;
       ctx.fillStyle = "#e05656";
       ctx.beginPath();
       ctx.arc(bb, bby, 5.5, 0, 7);
@@ -1497,7 +1573,7 @@
       ctx.strokeStyle = "rgba(244, 242, 237, 0.7)";
       ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.moveTo(dx + 30, bottom - 40);
+      ctx.moveTo(dx + 30, bottom - 30);
       ctx.lineTo(bb, bby);
       ctx.stroke();
       // ripple
@@ -1569,6 +1645,99 @@
       ctx.moveTo(s.x, s.y - r); ctx.lineTo(s.x, s.y + r);
       ctx.moveTo(s.x - r, s.y); ctx.lineTo(s.x + r, s.y);
       ctx.stroke();
+    }
+  }
+
+  // hidden mineshaft: wooden support frame over a dark shaft opening
+  function drawMineShaft(c) {
+    var s = worldToScreen(c.x, c.y);
+    // dark shaft hole
+    ctx.fillStyle = "#060605";
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y + 6, 30, 20, 0, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = "#0f0e0c";
+    ctx.beginPath();
+    ctx.ellipse(s.x - 4, s.y + 4, 20, 13, 0, 0, 7);
+    ctx.fill();
+    // wooden support frame (pine)
+    ctx.fillStyle = "#8a6238";
+    // top beam
+    ctx.fillRect(s.x - 40, s.y - 14, 80, 8);
+    ctx.fillStyle = "#a5764a";
+    ctx.fillRect(s.x - 40, s.y - 14, 80, 3);
+    // side posts
+    ctx.fillStyle = "#7a5230";
+    ctx.fillRect(s.x - 40, s.y - 6, 8, 26);
+    ctx.fillRect(s.x + 32, s.y - 6, 8, 26);
+    // post highlights
+    ctx.fillStyle = "rgba(255,255,255,0.12)";
+    ctx.fillRect(s.x - 38, s.y - 6, 3, 26);
+    ctx.fillRect(s.x + 34, s.y - 6, 3, 26);
+    // frame grain lines
+    ctx.strokeStyle = "rgba(60, 40, 15, 0.4)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(s.x - 30, s.y - 11); ctx.lineTo(s.x + 30, s.y - 11); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s.x - 30, s.y - 8); ctx.lineTo(s.x + 30, s.y - 8); ctx.stroke();
+    // warning sign on the frame
+    ctx.fillStyle = "#f4f2ed";
+    ctx.fillRect(s.x + 42, s.y - 34, 34, 16);
+    ctx.strokeStyle = "#6f7231";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(s.x + 42, s.y - 34, 34, 16);
+    ctx.fillStyle = "#5f6327";
+    ctx.font = "bold 9px Montserrat, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("! MINE", s.x + 59, s.y - 22);
+    ctx.textAlign = "start";
+  }
+
+  // loot chest (closed: locked with gold band; opened: lid up, empty)
+  function drawChest(c) {
+    var s = worldToScreen(c.x, c.y);
+    if (c.opened) {
+      // open chest: dark interior + lid tilted up
+      ctx.fillStyle = "#1c120a";
+      ctx.fillRect(s.x - 16, s.y - 10, 32, 14);
+      ctx.fillStyle = "#6b4a2b";
+      ctx.fillRect(s.x - 16, s.y - 10, 32, 4);
+      // lid standing up
+      ctx.fillStyle = "#8a6238";
+      ctx.beginPath();
+      ctx.moveTo(s.x - 16, s.y - 10);
+      ctx.lineTo(s.x - 12, s.y - 24);
+      ctx.lineTo(s.x + 12, s.y - 24);
+      ctx.lineTo(s.x + 16, s.y - 10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#a5764a";
+      ctx.fillRect(s.x - 12, s.y - 23, 24, 3);
+    } else {
+      // closed chest
+      ctx.fillStyle = "#7a5230";
+      ctx.fillRect(s.x - 17, s.y - 8, 34, 16);
+      // lid
+      ctx.fillStyle = "#8a6238";
+      ctx.fillRect(s.x - 17, s.y - 14, 34, 8);
+      ctx.fillStyle = "#a5764a";
+      ctx.fillRect(s.x - 17, s.y - 14, 34, 3);
+      // gold bands
+      ctx.fillStyle = "#e9d37a";
+      ctx.fillRect(s.x - 17, s.y - 4, 34, 3);
+      ctx.fillRect(s.x - 4, s.y - 14, 8, 22);
+      // lock
+      ctx.fillStyle = "#d4b84a";
+      ctx.fillRect(s.x - 2, s.y - 7, 4, 6);
+      ctx.fillStyle = "#8a6d1d";
+      ctx.fillRect(s.x - 1, s.y - 3, 2, 3);
+      // sparkle on the gold
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.fillRect(s.x - 16, s.y - 13, 3, 2);
+      // shadow
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      ctx.beginPath();
+      ctx.ellipse(s.x, s.y + 10, 20, 4, 0, 0, 7);
+      ctx.fill();
     }
   }
 
@@ -2120,6 +2289,8 @@
   function render() {
     if (state.cave) {
       drawCave();
+      state.chests.forEach(drawMineShaft);
+      state.chests.forEach(drawChest);
       state.ores.forEach(drawOre);
       drawPlayer();
       drawFloats();

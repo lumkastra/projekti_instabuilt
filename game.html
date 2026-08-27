@@ -528,8 +528,8 @@
     } catch (e) {}
   }
   var sfx = {
-    chop: function () { noise(0.09, 0.22, 700); tone(160, 0.08, "square", 0.1); },
-    mine: function () { noise(0.12, 0.26, 500); tone(110, 0.12, "triangle", 0.16, 0, 70); },
+    chop: function () { if (playBuffer("chop")) return; noise(0.09, 0.22, 700); tone(160, 0.08, "square", 0.1); },
+    mine: function () { if (playBuffer("mine")) return; noise(0.12, 0.26, 500); tone(110, 0.12, "triangle", 0.16, 0, 70); },
     swim: function () { noise(0.18, 0.12, 900); },
     sell: function () { tone(880, 0.09, "sine", 0.12); tone(1318, 0.14, "sine", 0.12, 0.09); },
     chest: function () { tone(392, 0.09, "triangle", 0.14); tone(523, 0.12, "triangle", 0.14, 0.08); },
@@ -537,10 +537,52 @@
     build: function () { tone(330, 0.08, "triangle", 0.13); tone(440, 0.08, "triangle", 0.13, 0.07); tone(660, 0.12, "triangle", 0.13, 0.14); },
     level: function () { tone(220, 0.1, "sine", 0.12); tone(330, 0.1, "sine", 0.12, 0.1); }
   };
-  // resume audio on first user gesture
+  // real Minecraft dig sounds (assets/sounds/*.ogg), decoded on demand
+  var sfxBuffers = {};
+  var sfxLoaded = false;
+  var SFX_FILES = {
+    chop: ["dig_wood1.ogg", "dig_wood2.ogg", "dig_wood3.ogg"],
+    mine: ["dig_stone1.ogg", "dig_stone2.ogg", "dig_stone3.ogg"]
+  };
+  function loadMinecraftSfx() {
+    if (sfxLoaded) return;
+    sfxLoaded = true;
+    var a = ac();
+    if (!a || !a.decodeAudioData) return;
+    Object.keys(SFX_FILES).forEach(function (name) {
+      SFX_FILES[name].forEach(function (f) {
+        fetch("assets/sounds/" + f)
+          .then(function (r) { return r.arrayBuffer(); })
+          .then(function (buf) {
+            a.decodeAudioData(buf, function (audioBuf) {
+              (sfxBuffers[name] = sfxBuffers[name] || []).push(audioBuf);
+            }, function () {});
+          })
+          .catch(function () {});
+      });
+    });
+  }
+  // returns true if a Minecraft buffer played
+  function playBuffer(name, vol) {
+    var a = ac();
+    if (!a || !sfxBuffers[name] || !sfxBuffers[name].length) return false;
+    try {
+      var buf = sfxBuffers[name][Math.floor(Math.random() * sfxBuffers[name].length)];
+      var src = a.createBufferSource();
+      src.buffer = buf;
+      var g = a.createGain();
+      g.gain.setValueAtTime(vol || 0.75, a.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + buf.duration);
+      src.connect(g); g.connect(a.destination);
+      src.start();
+      return true;
+    } catch (e) { return false; }
+  }
+  // resume audio on first user gesture + start loading the Minecraft sounds
   ["pointerdown", "keydown", "touchstart"].forEach(function (evt) {
-    window.addEventListener(evt, function () { var a = ac(); if (a && a.state === "suspended") a.resume(); }, { once: true });
+    window.addEventListener(evt, function () { var a = ac(); if (a && a.state === "suspended") a.resume(); loadMinecraftSfx(); }, { once: true });
   });
+  loadMinecraftSfx();
 
   /* ================= world generation ================= */
   function farFrom(x, y, list, min) {

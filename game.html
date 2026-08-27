@@ -302,6 +302,7 @@
     <span class="hud-chip"><span class="s">STONE</span>: <span id="stoneChip">0</span></span>
     <span class="hud-chip"><span class="c">COINS</span>: <span id="coinChip">0</span></span>
     <span class="hud-chip">ORES: <span class="i" id="ironChip">0</span> <span class="c2" id="coalChip">0</span> <span class="cu" id="copperChip">0</span> <span class="d" id="diamondChip">0</span></span>
+    <span class="hud-chip"><span class="a">ROD</span>: <span id="rodChip">✗</span> · FISH: <span id="fishChip" style="color:#8fd0f0">0</span></span>
   </div>
 </div>
 
@@ -321,6 +322,7 @@
   <p class="kicker">InstaBuilt · Pop-Up Solutions</p>
   <h1>Pop-Up <em>Builder</em></h1>
   <p>You're on a brand-new InstaBuilt site with a <strong>stone axe</strong> and a mission: gather wood, mine stone and rare ores in the <strong>cave</strong>, trade with the <strong>Shopkeeper</strong>, buy the kits you need — and build a <strong>28 m² Pop-Up Solution</strong>.</p>
+  <p style="font-size:0.82rem; color:rgba(244,242,237,.65)">Take a break: buy a <strong>fishing rod</strong> at the shop and fish off the dock on the beach!</p>
   <p style="font-size:0.82rem; color:rgba(244,242,237,.65)">Move: WASD / arrows · Interact: E (or click) · Touch: pad + ⚒ button</p>
   <button class="btn" id="startBtn">Start building</button>
 </div>
@@ -367,6 +369,11 @@
       <button id="sellDiamond">Sell all</button>
     </div>
     <div class="shop-row">
+      <div class="info"><span class="name">Sell fish</span><span class="desc">You have <span id="shopFish">0</span></span></div>
+      <span class="price">+35<span class="c">c</span> each</span>
+      <button id="sellFish">Sell all</button>
+    </div>
+    <div class="shop-row">
       <div class="info"><span class="name">Iron axe</span><span class="desc">Chop &amp; mine 40% faster</span></div>
       <span class="price">100<span class="c">c</span></span>
       <button id="buyAxe">Buy</button>
@@ -385,6 +392,11 @@
       <div class="info"><span class="name">Window kit</span><span class="desc">Needed for the Pop-Up</span></div>
       <span class="price">70<span class="c">c</span></span>
       <button id="buyWindow">Buy</button>
+    </div>
+    <div class="shop-row">
+      <div class="info"><span class="name">Fishing rod</span><span class="desc">Fish at the dock on the beach</span></div>
+      <span class="price">120<span class="c">c</span></span>
+      <button id="buyRod">Buy</button>
     </div>
     <p class="shop-note" id="shopNote"></p>
   </div>
@@ -419,6 +431,7 @@
   var SAND_Y = 1360;           // beach starts here
   var SEA_Y = 1420;            // water starts here
   var SHIP_X = 1150, SHIP_Y = 1510;  // decorative ship
+  var DOCK_X = 700, DOCK_Y = 1480;   // fishing dock (fishing spot at the end)
   var VW = 960, VH = 700;      // viewport (css px)
   var DPR = 1;
 
@@ -426,13 +439,13 @@
   var ORE_DUR = { stone: 1.5, coal: 1.7, iron: 1.9, copper: 2.0, diamond: 2.5 };
   var ORE_IRON_DUR = { stone: 0.95, coal: 1.05, iron: 1.15, copper: 1.25, diamond: 1.6 };
   var ORE_COLORS = { stone: "#aab0b8", coal: "#3a3733", iron: "#c0793f", copper: "#4e9d6e", diamond: "#6fe3f0" };
-  var SELL_PRICES = { wood: 10, stone: 15, iron: 25, coal: 20, copper: 40, diamond: 100 };
+  var SELL_PRICES = { wood: 10, stone: 15, iron: 25, coal: 20, copper: 40, diamond: 100, fish: 35 };
 
   var state = {
     player: { x: 560, y: 1300, r: 15, speed: 235, dir: 0, moving: false, step: 0, tool: "stone" },
     cam: { x: 0, y: 0 },
-    inv: { wood: 0, stone: 0, coins: 0, foundation: 0, panels: 0, window: 0, iron: 0, coal: 0, copper: 0, diamond: 0 },
-    total: { wood: 0, stone: 0, coins: 0, iron: 0, coal: 0, copper: 0, diamond: 0 },
+    inv: { wood: 0, stone: 0, coins: 0, foundation: 0, panels: 0, window: 0, iron: 0, coal: 0, copper: 0, diamond: 0, fish: 0, rod: 0 },
+    total: { wood: 0, stone: 0, coins: 0, iron: 0, coal: 0, copper: 0, diamond: 0, fish: 0 },
     trees: [], ores: [],
     npc: { x: 660, y: 560 },
     pad: { x: 1760, y: 420 },
@@ -441,6 +454,7 @@
     caveSpawnX: 150, caveSpawnY: 450,    // where the player appears inside the cave
     chop: null,            // {target, t, dur, kind}
     build: null,           // {t, dur}
+    fish: null,            // fishing session {phase, t, dur}
     objective: 0,
     elapsed: 0,
     running: false,
@@ -516,13 +530,16 @@
     state.inv.wood = 0; state.inv.stone = 0; state.inv.coins = 0;
     state.inv.foundation = 0; state.inv.panels = 0; state.inv.window = 0;
     state.inv.iron = 0; state.inv.coal = 0; state.inv.copper = 0; state.inv.diamond = 0;
+    state.inv.fish = 0; state.inv.rod = 0;
     state.total.wood = 0; state.total.stone = 0; state.total.coins = 0;
     state.total.iron = 0; state.total.coal = 0; state.total.copper = 0; state.total.diamond = 0;
+    state.total.fish = 0;
     state.player.x = 560; state.player.y = 1300;
     state.player.tool = "stone";
     state.player.moving = false;
     state.chop = null;
     state.build = null;
+    state.fish = null;
     state.objective = 0;
     state.elapsed = 0;
     state.started = true;
@@ -601,6 +618,7 @@
       spots.push({ x: state.npc.x, y: state.npc.y, kind: "npc" });
       spots.push({ x: state.pad.x, y: state.pad.y, kind: "pad" });
       spots.push({ x: state.caveEnterX - 40, y: state.caveEnterY, kind: "caveEnter" });
+      spots.push({ x: DOCK_X, y: DOCK_Y, kind: "fish" });
     }
     return spots;
   }
@@ -628,6 +646,7 @@
     else if (t.kind === "pad") startBuild();
     else if (t.kind === "caveEnter") enterCave();
     else if (t.kind === "caveExit") leaveCave();
+    else if (t.kind === "fish") startFishing();
   }
 
   /* ================= cave transitions ================= */
@@ -669,6 +688,17 @@
       state.ores = []; // reset on leave too
       updateHud();
     });
+  }
+
+  /* ================= fishing ================= */
+  function startFishing() {
+    if (state.fish || fade.on || state.shopOpen) return;
+    if (!state.inv.rod) {
+      showHint("You need a fishing rod — buy one at the shop!");
+      return;
+    }
+    state.fish = { phase: "cast", t: 0, dur: 0.8 };
+    addFloat(DOCK_X, DOCK_Y - 44, "Cast…", "#cfe0f0");
   }
 
   function startGather(target, kind) {
@@ -721,16 +751,19 @@
     document.getElementById("shopCoal").textContent = state.inv.coal;
     document.getElementById("shopCopper").textContent = state.inv.copper;
     document.getElementById("shopDiamond").textContent = state.inv.diamond;
+    document.getElementById("shopFish").textContent = state.inv.fish;
     document.getElementById("buyAxe").disabled = state.player.tool === "iron" || state.inv.coins < 100;
     document.getElementById("buyFoundation").disabled = state.inv.coins < 60;
     document.getElementById("buyPanels").disabled = state.inv.coins < 90;
     document.getElementById("buyWindow").disabled = state.inv.coins < 70;
+    document.getElementById("buyRod").disabled = state.inv.rod > 0 || state.inv.coins < 120;
     document.getElementById("sellWood").disabled = state.inv.wood === 0;
     document.getElementById("sellStone").disabled = state.inv.stone === 0;
     document.getElementById("sellIron").disabled = state.inv.iron === 0;
     document.getElementById("sellCoal").disabled = state.inv.coal === 0;
     document.getElementById("sellCopper").disabled = state.inv.copper === 0;
     document.getElementById("sellDiamond").disabled = state.inv.diamond === 0;
+    document.getElementById("sellFish").disabled = state.inv.fish === 0;
     document.getElementById("shopNote").textContent = state.player.tool === "iron"
       ? "You own the iron axe. Stone and ores come from the cave — it resets every time you enter!"
       : "Recipe for the 28 m² Pop-Up: 25 wood + 15 stone + Foundation + Panels + Window. Stone & ores: cave at the end of the map.";
@@ -743,6 +776,7 @@
     else if (kind === "foundation") state.inv.foundation++;
     else if (kind === "panels") state.inv.panels++;
     else if (kind === "window") state.inv.window++;
+    else if (kind === "rod") state.inv.rod = 1;
     updateShop();
     updateHud();
   }
@@ -765,10 +799,12 @@
   document.getElementById("sellCoal").addEventListener("click", function () { sell("coal"); });
   document.getElementById("sellCopper").addEventListener("click", function () { sell("copper"); });
   document.getElementById("sellDiamond").addEventListener("click", function () { sell("diamond"); });
+  document.getElementById("sellFish").addEventListener("click", function () { sell("fish"); });
   document.getElementById("buyAxe").addEventListener("click", function () { buy("axe", 100); });
   document.getElementById("buyFoundation").addEventListener("click", function () { buy("foundation", 60); });
   document.getElementById("buyPanels").addEventListener("click", function () { buy("panels", 90); });
   document.getElementById("buyWindow").addEventListener("click", function () { buy("window", 70); });
+  document.getElementById("buyRod").addEventListener("click", function () { buy("rod", 120); });
   document.getElementById("shopClose").addEventListener("click", closeShop);
 
   /* ================= objectives ================= */
@@ -798,6 +834,8 @@
     document.getElementById("coalChip").textContent = state.inv.coal;
     document.getElementById("copperChip").textContent = state.inv.copper;
     document.getElementById("diamondChip").textContent = state.inv.diamond;
+    document.getElementById("rodChip").textContent = state.inv.rod > 0 ? "✓" : "✗";
+    document.getElementById("fishChip").textContent = state.inv.fish;
   }
 
   var hintTimer = 0;
@@ -837,6 +875,11 @@
     var left = (keys["a"] || keys["arrowleft"]) || touchKeys.left;
     var right = (keys["d"] || keys["arrowright"]) || touchKeys.right;
 
+    // swimming: in the sea you can't walk, only swim (slower); the dock is walkable
+    var onDock = Math.abs(p.x - DOCK_X) < 70 && p.y > SAND_Y - 30 && p.y < DOCK_Y + 30;
+    var inWater = p.y > SEA_Y - 6 && !onDock;
+    var spd = p.speed * (inWater ? 0.55 : 1);
+
     if (clickTarget) {
       // auto-walk toward the clicked target
       var tx = clickTarget.x, ty = clickTarget.y;
@@ -846,8 +889,8 @@
         interactWith(clickTarget);
         clickTarget = null;
       } else {
-        p.x += (dx / d) * p.speed * dt;
-        p.y += (dy / d) * p.speed * dt;
+        p.x += (dx / d) * spd * dt;
+        p.y += (dy / d) * spd * dt;
         p.dir = Math.atan2(dy, dx);
         p.moving = true;
         p.step += dt * 9;
@@ -860,8 +903,8 @@
       if (p.moving) {
         var len = Math.hypot(vx, vy);
         vx /= len; vy /= len;
-        p.x += vx * p.speed * dt;
-        p.y += vy * p.speed * dt;
+        p.x += vx * spd * dt;
+        p.y += vy * spd * dt;
         p.dir = Math.atan2(vy, vx);
         p.step += dt * 9;
       }
@@ -875,6 +918,31 @@
       if (p.x > state.caveEnterX - 46 && Math.abs(p.y - state.caveEnterY) < 120) enterCave();
     } else {
       if (p.x < 96 && Math.abs(p.y - 450) < 120) leaveCave();
+    }
+
+    // fishing progress (cancel if you move away or input)
+    if (state.fish) {
+      var f = state.fish;
+      if (p.moving || clickTarget ||
+          Math.hypot(DOCK_X - p.x, DOCK_Y - p.y) > 160) {
+        state.fish = null;
+      } else {
+        f.t += dt;
+        if (f.phase === "cast" && f.t >= f.dur) {
+          f.phase = "wait"; f.t = 0; f.dur = 2.0 + Math.random() * 2.2;
+          addFloat(DOCK_X, DOCK_Y - 44, "…", "#cfe0f0");
+        } else if (f.phase === "wait" && f.t >= f.dur) {
+          f.phase = "bite"; f.t = 0; f.dur = 1.1;
+          addFloat(DOCK_X, DOCK_Y - 44, "Bite!", "#f2e3b0");
+        } else if (f.phase === "bite" && f.t >= f.dur) {
+          var n = 1 + Math.floor(Math.random() * 2); // 1-2 fish
+          state.inv.fish += n;
+          state.total.fish += n;
+          addFloat(DOCK_X, DOCK_Y - 60, "+" + n + " fish", "#8fd0f0");
+          state.fish = null;
+          updateHud();
+        }
+      }
     }
 
     // gathering progress
@@ -966,6 +1034,7 @@
         : t.kind === "npc" ? "E — Talk to Shopkeeper"
         : t.kind === "pad" ? "E — Build Pop-Up"
         : t.kind === "caveEnter" ? "E — Enter the cave"
+        : t.kind === "fish" ? (state.inv.rod ? "E — Fish at the dock" : "E — Fishing spot (buy a rod at the shop)")
         : "E — Leave the cave";
       if (el.textContent !== txt) { el.textContent = txt; el.classList.add("show"); }
     } else if (!t && hintTimer <= 0) {
@@ -1227,6 +1296,7 @@
       }
       ctx.stroke();
       drawShip();
+      drawDock();
     }
 
     // world border
@@ -1286,6 +1356,71 @@
     // reflection
     ctx.fillStyle = "rgba(255,255,255,0.14)";
     ctx.fillRect(sx - 8, sy + 16, 16, 26);
+  }
+
+  // small wooden fishing dock at the beach, reaching into the sea
+  function drawDock() {
+    var dx = DOCK_X - state.cam.x;
+    var top = SAND_Y - state.cam.y, bottom = DOCK_Y + 16 - state.cam.y;
+    if (dx < -160 || dx > VW + 160 || bottom < 0 || top > VH) return;
+    // posts (pilings) reaching into the water
+    ctx.fillStyle = "#4a321c";
+    for (var post = -2; post <= 2; post++) {
+      var px = dx + post * 26;
+      ctx.fillRect(px - 4, top + 8, 8, bottom - top - 8);
+    }
+    // deck planks
+    ctx.fillStyle = "#8a6238";
+    ctx.fillRect(dx - 64, top, 128, bottom - top);
+    ctx.fillStyle = "#a5764a";
+    ctx.fillRect(dx - 64, top, 128, 8);
+    // plank seams
+    ctx.strokeStyle = "rgba(60, 40, 20, 0.5)";
+    ctx.lineWidth = 1.5;
+    for (var seam = 1; seam < 8; seam++) {
+      var syy = top + 14 + seam * ((bottom - top - 18) / 8);
+      ctx.beginPath();
+      ctx.moveTo(dx - 60, syy);
+      ctx.lineTo(dx + 60, syy);
+      ctx.stroke();
+    }
+    // end platform (wider)
+    ctx.fillStyle = "#9a6e40";
+    ctx.fillRect(dx - 34, bottom - 14, 68, 14);
+    // barrel on the dock
+    ctx.fillStyle = "#7a5230";
+    ctx.beginPath();
+    ctx.arc(dx - 44, top + 30, 9, 0, 7);
+    ctx.fill();
+    ctx.strokeStyle = "#5a3d24";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // lantern post at the end
+    ctx.fillStyle = "#4a321c";
+    ctx.fillRect(dx + 40, bottom - 34, 5, 22);
+    ctx.fillStyle = "rgba(255, 200, 90, 0.5)";
+    ctx.beginPath();
+    ctx.arc(dx + 42, bottom - 38, 5, 0, 7);
+    ctx.fill();
+    // fishing bobber when actively fishing
+    if (state.fish) {
+      var bb = dx + 78, bby = bottom - 6 + Math.sin(T * 2.5) * 3;
+      ctx.fillStyle = "#e05656";
+      ctx.beginPath();
+      ctx.arc(bb, bby, 5, 0, 7);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(244, 242, 237, 0.7)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(dx + 42, bottom - 44);
+      ctx.lineTo(bb, bby);
+      ctx.stroke();
+      // ripple
+      ctx.strokeStyle = "rgba(255,255,255,0.4)";
+      ctx.beginPath();
+      ctx.arc(bb, bby + 2, 8 + (T * 10 % 8), 0, 7);
+      ctx.stroke();
+    }
   }
 
   function drawTree(t) {
@@ -1675,14 +1810,38 @@
   function drawPlayer() {
     var p = state.player;
     var s = worldToScreen(p.x, p.y);
-    ctx.fillStyle = "rgba(0,0,0,0.18)";
-    ctx.beginPath();
-    ctx.ellipse(s.x, s.y + 14, 14, 6, 0, 0, 7);
-    ctx.fill();
+    var onDock = Math.abs(p.x - DOCK_X) < 70 && p.y > SAND_Y - 30 && p.y < DOCK_Y + 30;
+    var inWater = p.y > SEA_Y - 6 && !onDock;
+    if (!inWater) {
+      ctx.fillStyle = "rgba(0,0,0,0.18)";
+      ctx.beginPath();
+      ctx.ellipse(s.x, s.y + 14, 14, 6, 0, 0, 7);
+      ctx.fill();
+    } else {
+      // swimming: splash rings around the player
+      var bob = Math.sin(T * 4 + p.step) * 2.5;
+      s.y += bob;
+      for (var k = 0; k < 3; k++) {
+        var rr = (T * 26 + k * 14) % 26;
+        ctx.strokeStyle = "rgba(255,255,255," + (0.5 * (1 - rr / 26)) + ")";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y + 10, 5 + rr, 0, 7);
+        ctx.stroke();
+      }
+    }
     var swing = p.moving ? Math.sin(p.step) * 4 : 0;
-    ctx.fillStyle = "#3b3f33";
-    ctx.beginPath(); ctx.arc(s.x - 6, s.y + 11 + swing * 0.3, 4.5, 0, 7); ctx.fill();
-    ctx.beginPath(); ctx.arc(s.x + 6, s.y + 11 - swing * 0.3, 4.5, 0, 7); ctx.fill();
+    if (!inWater) {
+      ctx.fillStyle = "#3b3f33";
+      ctx.beginPath(); ctx.arc(s.x - 6, s.y + 11 + swing * 0.3, 4.5, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(s.x + 6, s.y + 11 - swing * 0.3, 4.5, 0, 7); ctx.fill();
+    } else {
+      // paddling arms
+      var pad = Math.sin(T * 6 + p.step) * 5;
+      ctx.fillStyle = "#f2efe6";
+      ctx.beginPath(); ctx.arc(s.x - 12, s.y + 6 + pad, 4.5, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(s.x + 12, s.y + 6 - pad, 4.5, 0, 7); ctx.fill();
+    }
     ctx.fillStyle = "#f2efe6";
     ctx.beginPath();
     ctx.arc(s.x, s.y, 13, 0, 7);

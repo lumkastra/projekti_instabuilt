@@ -520,6 +520,7 @@
         var x = 130 + Math.random() * (CW - 260);
         var y = 100 + Math.random() * (CH - 200);
         if (Math.hypot(x - state.caveSpawnX, y - state.caveSpawnY) < 260) continue;
+        if (caveHouse && Math.hypot(x - caveHouse.fx * CW, y - caveHouse.fy * CH) < 150) continue;
         if (!farFrom(x, y, state.ores, 85)) continue;
         state.ores.push({ x: x, y: y, kind: g.kind, alive: true, respawn: 0, seed: Math.random() * 10 });
         n--;
@@ -541,6 +542,7 @@
         var x = 180 + Math.random() * (CW - 360);
         var y = 140 + Math.random() * (CH - 280);
         if (Math.hypot(x - state.caveSpawnX, y - state.caveSpawnY) < 300) continue;
+        if (caveHouse && Math.hypot(x - caveHouse.fx * CW, y - caveHouse.fy * CH) < 180) continue;
         if (!farFrom(x, y, state.chests, 260)) continue;
         if (!farFrom(x, y, state.ores, 90)) continue;
         state.chests.push({ x: x, y: y, opened: false, seed: Math.random() * 10 });
@@ -1164,6 +1166,7 @@
   var torchSpots = [];      // warm light pools in the cave
   var caveSparkles = [];    // twinkling dust in the cave
   var caveTimbers = [];     // wooden support timbers (mine props) in the cave
+  var caveHouse = null;     // old abandoned house in the cave
 
   (function makeDecor() {
     var i, j;
@@ -1240,6 +1243,8 @@
     for (i = 0; i < 16; i++) {
       caveTimbers.push({ fx: Math.random(), fy: Math.random(), h: 30 + Math.random() * 40, seed: Math.random() * 10 });
     }
+    // one old abandoned house, tucked in the back of the cave
+    caveHouse = { fx: 0.66, fy: 0.3, seed: Math.random() * 10 };
     for (i = 0; i < 46; i++) {
       caveSparkles.push({ fx: Math.random(), fy: Math.random(), p: Math.random() * 7 });
     }
@@ -1961,6 +1966,107 @@
       }
     }
 
+    // old abandoned house tucked in the back of the cave
+    if (caveHouse) {
+      var hx = caveHouse.fx * CW, hy = caveHouse.fy * CH;
+      var hpx = hx - state.cam.x, hpy = hy - state.cam.y;
+      // shadow
+      ctx.fillStyle = "rgba(0,0,0,0.35)";
+      ctx.beginPath();
+      ctx.ellipse(hpx + 20, hpy + 60, 66, 14, 0, 0, 7);
+      ctx.fill();
+      // body: old weathered planks
+      ctx.fillStyle = "#5a4228";
+      ctx.fillRect(hpx - 44, hpy, 88, 56);
+      // plank boards (vertical, weathered)
+      ctx.fillStyle = "#6b4e2e";
+      for (var bd = 0; bd < 8; bd++) {
+        ctx.fillRect(hpx - 40 + bd * 11, hpy + 2, 10, 52);
+      }
+      // gaps between boards (dark)
+      ctx.fillStyle = "rgba(20, 14, 8, 0.7)";
+      for (var gp = 0; gp < 7; gp++) {
+        ctx.fillRect(hpx - 41 + gp * 11 + 10, hpy + 2, 1.5, 52);
+      }
+      // broken roof (collapsed on the left side)
+      ctx.fillStyle = "#4a3518";
+      ctx.beginPath();
+      ctx.moveTo(hpx - 50, hpy);
+      ctx.lineTo(hpx - 34, hpy - 30);
+      ctx.lineTo(hpx + 30, hpy - 34);
+      ctx.lineTo(hpx + 46, hpy - 4);
+      ctx.lineTo(hpx + 46, hpy);
+      ctx.closePath();
+      ctx.fill();
+      // hole in the roof (dark)
+      ctx.fillStyle = "#0d0a06";
+      ctx.beginPath();
+      ctx.moveTo(hpx + 14, hpy - 30);
+      ctx.lineTo(hpx + 34, hpy - 10);
+      ctx.lineTo(hpx + 20, hpy - 2);
+      ctx.lineTo(hpx + 2, hpy - 16);
+      ctx.closePath();
+      ctx.fill();
+      // roof boards
+      ctx.strokeStyle = "rgba(10, 8, 4, 0.6)";
+      ctx.lineWidth = 1.5;
+      for (var rb = 0; rb < 5; rb++) {
+        ctx.beginPath();
+        ctx.moveTo(hpx - 46 + rb * 20, hpy - 2);
+        ctx.lineTo(hpx - 34 + rb * 18, hpy - 30);
+        ctx.stroke();
+      }
+      // door (hanging half open)
+      ctx.fillStyle = "#2a1c10";
+      ctx.fillRect(hpx - 14, hpy + 20, 20, 36);
+      ctx.fillStyle = "#4a3218";
+      ctx.beginPath();
+      ctx.moveTo(hpx - 12, hpy + 22);
+      ctx.lineTo(hpx - 2, hpy + 22);
+      ctx.lineTo(hpx - 6, hpy + 54);
+      ctx.lineTo(hpx - 14, hpy + 54);
+      ctx.closePath();
+      ctx.fill();
+      // broken window (left)
+      ctx.fillStyle = "#0d0a06";
+      ctx.fillRect(hpx - 36, hpy + 10, 14, 12);
+      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(hpx - 36, hpy + 10, 14, 12);
+      ctx.beginPath(); ctx.moveTo(hpx - 36, hpy + 16); ctx.lineTo(hpx - 22, hpy + 16); ctx.stroke();
+      // window frame broken cross
+      ctx.strokeStyle = "rgba(20,14,8,0.9)";
+      ctx.beginPath(); ctx.moveTo(hpx - 29, hpy + 10); ctx.lineTo(hpx - 29, hpy + 22); ctx.stroke();
+      // chimney (leaning)
+      ctx.fillStyle = "#3d2f1a";
+      ctx.save();
+      ctx.translate(hpx + 30, hpy - 26);
+      ctx.rotate(0.18);
+      ctx.fillRect(-6, -14, 12, 16);
+      ctx.restore();
+      // scattered planks and debris in front
+      ctx.fillStyle = "#5a4228";
+      ctx.save();
+      ctx.translate(hpx - 50, hpy + 62);
+      ctx.rotate(-0.2);
+      ctx.fillRect(-18, -3, 36, 6);
+      ctx.restore();
+      ctx.save();
+      ctx.translate(hpx + 34, hpy + 64);
+      ctx.rotate(0.25);
+      ctx.fillRect(-16, -3, 32, 6);
+      ctx.restore();
+      // old rusted barrel beside the house
+      ctx.fillStyle = "#3d3528";
+      ctx.beginPath();
+      ctx.arc(hpx + 52, hpy + 52, 9, 0, 7);
+      ctx.fill();
+      ctx.strokeStyle = "#241e14";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(hpx + 52, hpy + 43); ctx.lineTo(hpx + 52, hpy + 61); ctx.stroke();
+    }
+
     // floor pebbles
     for (var pe = 0; pe < cavePebbles.length; pe++) {
       var cb = cavePebbles[pe];
@@ -2157,29 +2263,107 @@
     ctx.textAlign = "start";
   }
 
+  // build site: concrete foundation while empty; mini 2D Pop-Up Solutions appear as you deliver
   function drawPad() {
     var s = worldToScreen(state.pad.x, state.pad.y);
+
+    // concrete foundation slab
+    ctx.fillStyle = "#b9bdaa";
+    ctx.fillRect(s.x - 72, s.y - 57, 144, 114);
     ctx.fillStyle = "#c9ccb8";
-    ctx.fillRect(s.x - 70, s.y - 55, 140, 110);
-    ctx.strokeStyle = "rgba(19,22,16,0.35)";
+    ctx.fillRect(s.x - 68, s.y - 53, 136, 106);
+    // slab edge
+    ctx.strokeStyle = "rgba(19,22,16,0.4)";
     ctx.lineWidth = 3;
-    ctx.strokeRect(s.x - 70, s.y - 55, 140, 110);
-    // pop-up outline
-    ctx.strokeStyle = "rgba(128,131,54,0.9)";
-    ctx.lineWidth = 3;
-    ctx.setLineDash([8, 6]);
-    ctx.strokeRect(s.x - 46, s.y - 40, 92, 80);
-    ctx.beginPath();
-    ctx.moveTo(s.x - 46, s.y - 40);
-    ctx.lineTo(s.x, s.y - 62);
-    ctx.lineTo(s.x + 46, s.y - 40);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.strokeRect(s.x - 72, s.y - 57, 144, 114);
+    // concrete seams
+    ctx.strokeStyle = "rgba(19,22,16,0.18)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(s.x - 68, s.y - 20); ctx.lineTo(s.x + 68, s.y - 20); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(s.x - 68, s.y + 16); ctx.lineTo(s.x + 68, s.y + 16); ctx.stroke();
+    // anchor bolts on the corners
+    ctx.fillStyle = "#6f7231";
+    for (var bolt = 0; bolt < 4; bolt++) {
+      var bx = s.x + (bolt % 2 === 0 ? -62 : 62);
+      var by = s.y + (bolt < 2 ? -49 : 49);
+      ctx.beginPath();
+      ctx.arc(bx, by, 3.5, 0, 7);
+      ctx.fill();
+    }
+
+    // what's on the site: built Pop-Up Solutions (one per delivered build, up to 4)
+    var built = Math.min(state.buildCount || 0, 4);
+    if (built > 0) {
+      for (var h = 0; h < built; h++) {
+        drawMiniPopUp(s.x - 44 + h * 30, s.y - 26);
+      }
+    } else {
+      // empty site: dashed footprint + roof outline + level marker
+      ctx.strokeStyle = "rgba(128,131,54,0.9)";
+      ctx.lineWidth = 3;
+      ctx.setLineDash([8, 6]);
+      ctx.strokeRect(s.x - 46, s.y - 40, 92, 80);
+      ctx.beginPath();
+      ctx.moveTo(s.x - 46, s.y - 40);
+      ctx.lineTo(s.x, s.y - 62);
+      ctx.lineTo(s.x + 46, s.y - 40);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // level marker (spirit level)
+      ctx.fillStyle = "#f4f2ed";
+      ctx.fillRect(s.x - 18, s.y + 36, 36, 8);
+      ctx.strokeStyle = "#5f6327";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(s.x - 18, s.y + 36, 36, 8);
+      ctx.fillStyle = "#808336";
+      ctx.fillRect(s.x - 2, s.y + 38, 4, 4);
+    }
     ctx.fillStyle = "#5f6327";
     ctx.font = "bold 12px Montserrat, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("POP-UP SITE", s.x, s.y + 78);
+    ctx.fillText(built > 0 ? "POP-UP SOLUTIONS" : "POP-UP SITE", s.x, s.y + 78);
     ctx.textAlign = "start";
+  }
+
+  // minimalistic 2D Pop-Up Solution: olive walls, white folded roof, door + window
+  function drawMiniPopUp(x, y) {
+    // shadow
+    ctx.fillStyle = "rgba(19,22,16,0.18)";
+    ctx.beginPath();
+    ctx.ellipse(x + 14, y + 62, 30, 6, 0, 0, 7);
+    ctx.fill();
+    // main box (walls) — olive
+    ctx.fillStyle = "#808336";
+    ctx.fillRect(x, y + 14, 28, 44);
+    // lighter panel lines
+    ctx.strokeStyle = "rgba(244,242,237,0.25)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x + 9, y + 14); ctx.lineTo(x + 9, y + 58); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + 19, y + 14); ctx.lineTo(x + 19, y + 58); ctx.stroke();
+    // roof: two folded panels, paper white
+    ctx.fillStyle = "#f4f2ed";
+    ctx.beginPath();
+    ctx.moveTo(x - 2, y + 14);
+    ctx.lineTo(x + 14, y - 4);
+    ctx.lineTo(x + 30, y + 14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "rgba(19,22,16,0.35)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // roof seam
+    ctx.strokeStyle = "rgba(19,22,16,0.3)";
+    ctx.beginPath(); ctx.moveTo(x + 14, y - 4); ctx.lineTo(x + 14, y + 14); ctx.stroke();
+    // door
+    ctx.fillStyle = "#6f7231";
+    ctx.fillRect(x + 6, y + 34, 7, 24);
+    // window
+    ctx.fillStyle = "#d9e0a8";
+    ctx.fillRect(x + 18, y + 24, 7, 7);
+    ctx.strokeStyle = "rgba(19,22,16,0.3)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 18, y + 24, 7, 7);
+    ctx.beginPath(); ctx.moveTo(x + 21.5, y + 24); ctx.lineTo(x + 21.5, y + 31); ctx.stroke();
   }
 
   function drawPlayer() {

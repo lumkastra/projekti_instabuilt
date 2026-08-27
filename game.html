@@ -479,6 +479,69 @@
   var floats = [];          // floating texts {x,y,txt,t}
   var T = 0;
 
+  /* ================= sound effects (Web Audio, no files) ================= */
+  var audio = null;
+  function ac() {
+    if (audio) return audio;
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      audio = new AC();
+    } catch (e) { audio = null; }
+    return audio;
+  }
+  function tone(freq, dur, type, vol, when, slideTo) {
+    var a = ac();
+    if (!a) return;
+    try {
+      var t0 = a.currentTime + (when || 0);
+      var o = a.createOscillator();
+      var g = a.createGain();
+      o.type = type || "sine";
+      o.frequency.setValueAtTime(freq, t0);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+      g.gain.setValueAtTime(vol || 0.15, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(a.destination);
+      o.start(t0); o.stop(t0 + dur + 0.02);
+    } catch (e) {}
+  }
+  function noise(dur, vol, filterFreq) {
+    var a = ac();
+    if (!a) return;
+    try {
+      var t0 = a.currentTime;
+      var len = Math.max(1, Math.floor(a.sampleRate * dur));
+      var buf = a.createBuffer(1, len, a.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      var src = a.createBufferSource();
+      src.buffer = buf;
+      var f = a.createBiquadFilter();
+      f.type = "lowpass";
+      f.frequency.value = filterFreq || 1200;
+      var g = a.createGain();
+      g.gain.setValueAtTime(vol || 0.2, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      src.connect(f); f.connect(g); g.connect(a.destination);
+      src.start(t0);
+    } catch (e) {}
+  }
+  var sfx = {
+    chop: function () { noise(0.09, 0.22, 700); tone(160, 0.08, "square", 0.1); },
+    mine: function () { noise(0.12, 0.26, 500); tone(110, 0.12, "triangle", 0.16, 0, 70); },
+    swim: function () { noise(0.18, 0.12, 900); },
+    sell: function () { tone(880, 0.09, "sine", 0.12); tone(1318, 0.14, "sine", 0.12, 0.09); },
+    chest: function () { tone(392, 0.09, "triangle", 0.14); tone(523, 0.12, "triangle", 0.14, 0.08); },
+    fish: function () { tone(700, 0.07, "sine", 0.12, 0, 900); tone(1050, 0.1, "sine", 0.1, 0.07); },
+    build: function () { tone(330, 0.08, "triangle", 0.13); tone(440, 0.08, "triangle", 0.13, 0.07); tone(660, 0.12, "triangle", 0.13, 0.14); },
+    level: function () { tone(220, 0.1, "sine", 0.12); tone(330, 0.1, "sine", 0.12, 0.1); }
+  };
+  // resume audio on first user gesture
+  ["pointerdown", "keydown", "touchstart"].forEach(function (evt) {
+    window.addEventListener(evt, function () { var a = ac(); if (a && a.state === "suspended") a.resume(); }, { once: true });
+  });
+
   /* ================= world generation ================= */
   function farFrom(x, y, list, min) {
     for (var i = 0; i < list.length; i++) {
@@ -564,6 +627,7 @@
       return;
     }
     c.opened = true;
+    sfx.chest();
     // pick 1-2 loot items (weighted toward common)
     var picks = [];
     var totalW = 0;
@@ -862,6 +926,7 @@
     state.inv.coins += amt * price;
     state.total.coins += amt * price;
     state.inv[kind] = 0;
+    sfx.sell();
     updateShop();
     updateHud();
     updateObjective();
@@ -987,6 +1052,18 @@
     p.x = Math.max(24, Math.min(WW - 24, p.x));
     p.y = Math.max(24, Math.min(HH - 24, p.y));
 
+    // swimming splash sound (periodic while moving in water)
+    if (inWater && p.moving) {
+      if (!state.swimSfxT || state.swimSfxT <= 0) {
+        sfx.swim();
+        state.swimSfxT = 0.45;
+      } else {
+        state.swimSfxT -= dt;
+      }
+    } else {
+      state.swimSfxT = 0;
+    }
+
     // walking into the cave mouth (surface) or out of it (cave)
     if (!state.cave) {
       if (p.x > state.caveEnterX - 46 && Math.abs(p.y - state.caveEnterY) < 120) enterCave();
@@ -1008,11 +1085,13 @@
         } else if (f.phase === "wait" && f.t >= f.dur) {
           f.phase = "bite"; f.t = 0; f.dur = 1.1;
           addFloat(DOCK_X, FISH_Y - 44, "Bite!", "#f2e3b0");
+          sfx.fish();
         } else if (f.phase === "bite" && f.t >= f.dur) {
           var n = 1 + Math.floor(Math.random() * 2); // 1-2 fish
           state.inv.fish += n;
           state.total.fish += n;
           addFloat(DOCK_X, FISH_Y - 60, "+" + n + " fish", "#8fd0f0");
+          sfx.fish();
           state.fish = null;
           updateHud();
         }
@@ -1032,6 +1111,7 @@
             state.inv.wood += amount;
             state.total.wood += amount;
             addFloat(c.target.x, c.target.y - 40, "+" + amount + " wood", "#d9b380");
+            sfx.chop();
             c.target.alive = false;
             c.target.respawn = 20;
             if (state.objective === 0) updateObjective();
@@ -1044,6 +1124,7 @@
             state.inv[o.kind] += y;
             state.total[o.kind] += y;
             addFloat(o.x, o.y - 40, "+" + y + " " + o.kind, ORE_COLORS[o.kind]);
+            sfx.mine();
             o.alive = false;
             o.respawn = 0;
             if (state.objective === 1 && o.kind === "stone") updateObjective();
@@ -1052,6 +1133,7 @@
             state.inv.stone += stoneAmt;
             state.total.stone += stoneAmt;
             addFloat(c.target.x, c.target.y - 40, "+" + stoneAmt + " stone", "#b9c0c8");
+            sfx.mine();
             c.target.alive = false;
             c.target.respawn = 20;
             if (state.objective === 1) updateObjective();
@@ -1127,6 +1209,7 @@
     state.inv.wood -= RECIPE.wood;
     state.inv.stone -= RECIPE.stone;
     state.buildCount = (state.buildCount || 0) + 1;
+    sfx.build();
     var reward = 60 + state.buildCount * 10; // grows as you build more
     state.inv.coins += reward;
     state.total.coins += reward;
@@ -1454,7 +1537,7 @@
     ctx.fillRect(sx - 8, sy + 16, 16, 26);
   }
 
-  // flat 2D wooden dock with very detailed pine wood planks
+  // flat 2D wooden dock with very detailed pine wood planks (Stardew-style fishing pier)
   function drawDock() {
     var dx = DOCK_X - state.cam.x;
     var top = SAND_Y - state.cam.y, bottom = DOCK_Y + 10 - state.cam.y;
@@ -1569,27 +1652,95 @@
     ctx.ellipse(dx + 45, top + 200, 26, 10, -0.4, 0, 7);
     ctx.fill();
 
-    // end platform (slightly wider, for fishing)
-    ctx.fillStyle = "#bd9048";
-    ctx.fillRect(dx - 46, bottom - 16, 92, 16);
-    ctx.fillStyle = "#d9ad68";
-    ctx.fillRect(dx - 46, bottom - 16, 92, 4);
-    ctx.strokeStyle = "rgba(90, 55, 20, 0.4)";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(dx - 40, bottom - 6); ctx.lineTo(dx + 40, bottom - 6); ctx.stroke();
-
-    // small wooden crate on the dock
+    // ---- fishing hut at the end of the pier (like the reference) ----
+    var hx = dx, hy = bottom - 40;
+    // hut shadow on the deck
+    ctx.fillStyle = "rgba(0,0,0,0.15)";
+    ctx.fillRect(hx - 46, hy + 2, 92, 8);
+    // back wall (pine boards)
+    ctx.fillStyle = "#8a6238";
+    ctx.fillRect(hx - 42, hy - 40, 84, 40);
+    // wall plank lines
+    ctx.strokeStyle = "rgba(60, 40, 15, 0.4)";
+    ctx.lineWidth = 2;
+    for (var wp = -3; wp <= 3; wp++) {
+      var wxx = hx + wp * 12;
+      ctx.beginPath();
+      ctx.moveTo(wxx, hy - 38);
+      ctx.lineTo(wxx, hy);
+      ctx.stroke();
+    }
+    // roof (dark, with overhang — Stardew style)
+    ctx.fillStyle = "#4a3018";
+    ctx.beginPath();
+    ctx.moveTo(hx - 58, hy - 36);
+    ctx.lineTo(hx + 58, hy - 36);
+    ctx.lineTo(hx + 46, hy - 58);
+    ctx.lineTo(hx - 46, hy - 58);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#5a3d24";
+    ctx.beginPath();
+    ctx.moveTo(hx - 46, hy - 56);
+    ctx.lineTo(hx + 46, hy - 56);
+    ctx.lineTo(hx + 36, hy - 70);
+    ctx.lineTo(hx - 36, hy - 70);
+    ctx.closePath();
+    ctx.fill();
+    // roof ridge highlight
+    ctx.fillStyle = "rgba(255,255,255,0.12)";
+    ctx.fillRect(hx - 36, hy - 70, 72, 3);
+    // doorway (dark opening)
+    ctx.fillStyle = "#1c120a";
+    ctx.fillRect(hx - 13, hy - 26, 26, 26);
+    // door frame
+    ctx.strokeStyle = "#6b4a2b";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(hx - 13, hy - 26, 26, 26);
+    // window with warm glow
+    ctx.fillStyle = "#f2d080";
+    ctx.fillRect(hx + 17, hy - 32, 13, 11);
+    ctx.strokeStyle = "#5a3d24";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(hx + 17, hy - 32, 13, 11);
+    ctx.beginPath(); ctx.moveTo(hx + 23.5, hy - 32); ctx.lineTo(hx + 23.5, hy - 21); ctx.stroke();
+    // lantern beside the door with warm glow
+    ctx.fillStyle = "#4a321c";
+    ctx.fillRect(hx + 30, hy - 22, 4, 12);
+    ctx.fillStyle = "rgba(255, 200, 90, 0.65)";
+    ctx.beginPath();
+    ctx.arc(hx + 32, hy - 24, 4 + Math.sin(T * 3) * 1.2, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255, 220, 130, 0.15)";
+    ctx.beginPath();
+    ctx.arc(hx + 32, hy - 24, 18, 0, 7);
+    ctx.fill();
+    // small crate beside the hut
     ctx.fillStyle = "#a5764a";
-    ctx.fillRect(dx - 64, top + 34, 20, 16);
+    ctx.fillRect(hx - 58, hy - 14, 15, 14);
     ctx.strokeStyle = "#6b4a2b";
     ctx.lineWidth = 1.5;
-    ctx.strokeRect(dx - 64, top + 34, 20, 16);
-    ctx.beginPath(); ctx.moveTo(dx - 54, top + 34); ctx.lineTo(dx - 54, top + 50); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(dx - 64, top + 42); ctx.lineTo(dx - 44, top + 42); ctx.stroke();
+    ctx.strokeRect(hx - 58, hy - 14, 15, 14);
+    ctx.beginPath(); ctx.moveTo(hx - 50.5, hy - 14); ctx.lineTo(hx - 50.5, hy); ctx.stroke();
+    // rope coil near the door
+    ctx.strokeStyle = "#c9b483";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(hx + 52, hy - 6, 6, 0, 7);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(hx + 52, hy - 6, 3, 0, 7);
+    ctx.stroke();
+
+    // end platform (slightly wider, for fishing)
+    ctx.fillStyle = "#bd9048";
+    ctx.fillRect(dx - 46, bottom - 14, 92, 14);
+    ctx.fillStyle = "#d9ad68";
+    ctx.fillRect(dx - 46, bottom - 14, 92, 3);
 
     // fishing bobber when actively fishing (cast from the end platform)
     if (state.fish) {
-      var bb = dx + 96, bby = bottom - 6 + Math.sin(T * 2.5) * 3;
+      var bb = dx + 96, bby = bottom - 4 + Math.sin(T * 2.5) * 3;
       ctx.fillStyle = "#e05656";
       ctx.beginPath();
       ctx.arc(bb, bby, 5.5, 0, 7);
@@ -1597,7 +1748,7 @@
       ctx.strokeStyle = "rgba(244, 242, 237, 0.7)";
       ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.moveTo(dx + 30, bottom - 30);
+      ctx.moveTo(dx + 32, bottom - 28);
       ctx.lineTo(bb, bby);
       ctx.stroke();
       // ripple
@@ -2291,12 +2442,10 @@
       ctx.fill();
     }
 
-    // what's on the site: built Pop-Up Solutions (one per delivered build, up to 4)
-    var built = Math.min(state.buildCount || 0, 4);
-    if (built > 0) {
-      for (var h = 0; h < built; h++) {
-        drawMiniPopUp(s.x - 44 + h * 30, s.y - 26);
-      }
+    // what's on the site: a full-size Pop-Up Solution once delivered (fills the whole foundation)
+    var built = (state.buildCount || 0) > 0;
+    if (built) {
+      drawMiniPopUp(s.x, s.y + 4, Math.min(state.buildCount, 4));
     } else {
       // empty site: dashed footprint + roof outline + level marker
       ctx.strokeStyle = "rgba(128,131,54,0.9)";
@@ -2321,49 +2470,104 @@
     ctx.fillStyle = "#5f6327";
     ctx.font = "bold 12px Montserrat, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(built > 0 ? "POP-UP SOLUTIONS" : "POP-UP SITE", s.x, s.y + 78);
+    ctx.fillText(built ? "POP-UP SOLUTION" : "POP-UP SITE", s.x, s.y + 78);
     ctx.textAlign = "start";
   }
 
-  // minimalistic 2D Pop-Up Solution: olive walls, white folded roof, door + window
-  function drawMiniPopUp(x, y) {
+  // full-size minimalistic 2D Pop-Up Solution filling the whole foundation
+  // upgrades: 2nd build adds a window, 3rd a door awning, 4th a second floor line
+  function drawMiniPopUp(x, y, level) {
     // shadow
     ctx.fillStyle = "rgba(19,22,16,0.18)";
     ctx.beginPath();
-    ctx.ellipse(x + 14, y + 62, 30, 6, 0, 0, 7);
+    ctx.ellipse(x, y + 62, 62, 8, 0, 0, 7);
     ctx.fill();
-    // main box (walls) — olive
+    // main box (walls) — olive, fills the foundation
     ctx.fillStyle = "#808336";
-    ctx.fillRect(x, y + 14, 28, 44);
-    // lighter panel lines
-    ctx.strokeStyle = "rgba(244,242,237,0.25)";
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(x + 9, y + 14); ctx.lineTo(x + 9, y + 58); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x + 19, y + 14); ctx.lineTo(x + 19, y + 58); ctx.stroke();
-    // roof: two folded panels, paper white
+    ctx.fillRect(x - 60, y - 6, 120, 66);
+    // panel lines
+    ctx.strokeStyle = "rgba(244,242,237,0.22)";
+    ctx.lineWidth = 1.5;
+    for (var pn = 0; pn < 5; pn++) {
+      ctx.beginPath();
+      ctx.moveTo(x - 48 + pn * 24, y - 6);
+      ctx.lineTo(x - 48 + pn * 24, y + 60);
+      ctx.stroke();
+    }
+    // floor line
+    ctx.strokeStyle = "rgba(244,242,237,0.35)";
+    ctx.beginPath(); ctx.moveTo(x - 60, y + 26); ctx.lineTo(x + 60, y + 26); ctx.stroke();
+    // roof: two big folded panels, paper white
     ctx.fillStyle = "#f4f2ed";
     ctx.beginPath();
-    ctx.moveTo(x - 2, y + 14);
-    ctx.lineTo(x + 14, y - 4);
-    ctx.lineTo(x + 30, y + 14);
+    ctx.moveTo(x - 70, y - 6);
+    ctx.lineTo(x, y - 34);
+    ctx.lineTo(x + 70, y - 6);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = "rgba(19,22,16,0.35)";
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "rgba(19,22,16,0.4)";
+    ctx.lineWidth = 2;
     ctx.stroke();
-    // roof seam
+    // roof seam + ridge
     ctx.strokeStyle = "rgba(19,22,16,0.3)";
-    ctx.beginPath(); ctx.moveTo(x + 14, y - 4); ctx.lineTo(x + 14, y + 14); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y - 34); ctx.lineTo(x, y - 6); ctx.stroke();
+    ctx.fillStyle = "#e9e6da";
+    ctx.fillRect(x - 40, y - 36, 80, 4);
     // door
     ctx.fillStyle = "#6f7231";
-    ctx.fillRect(x + 6, y + 34, 7, 24);
-    // window
+    ctx.fillRect(x - 10, y + 26, 20, 34);
+    ctx.strokeStyle = "rgba(19,22,16,0.35)";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x - 10, y + 26, 20, 34);
+    // door handle
     ctx.fillStyle = "#d9e0a8";
-    ctx.fillRect(x + 18, y + 24, 7, 7);
+    ctx.beginPath();
+    ctx.arc(x + 6, y + 44, 1.8, 0, 7);
+    ctx.fill();
+    // windows: one on each side, more with higher level
+    ctx.fillStyle = "#d9e0a8";
+    ctx.fillRect(x - 44, y + 6, 14, 12);
+    ctx.fillRect(x + 30, y + 6, 14, 12);
     ctx.strokeStyle = "rgba(19,22,16,0.3)";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x - 44, y + 6, 14, 12);
+    ctx.strokeRect(x + 30, y + 6, 14, 12);
+    ctx.beginPath(); ctx.moveTo(x - 37, y + 6); ctx.lineTo(x - 37, y + 18); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + 37, y + 6); ctx.lineTo(x + 37, y + 18); ctx.stroke();
+    if (level >= 2) {
+      // extra window on the door side (upper)
+      ctx.fillStyle = "#d9e0a8";
+      ctx.fillRect(x - 44, y - 2, 14, 10);
+      ctx.strokeStyle = "rgba(19,22,16,0.3)";
+      ctx.strokeRect(x - 44, y - 2, 14, 10);
+    }
+    if (level >= 3) {
+      // awning over the door
+      ctx.fillStyle = "#6f7231";
+      ctx.fillRect(x - 16, y + 20, 32, 5);
+      ctx.strokeStyle = "rgba(19,22,16,0.3)";
+      ctx.strokeRect(x - 16, y + 20, 32, 5);
+    }
+    if (level >= 4) {
+      // second-floor window row (built up)
+      ctx.fillStyle = "#d9e0a8";
+      for (var w2 = 0; w2 < 3; w2++) {
+        ctx.fillRect(x - 36 + w2 * 26, y - 2, 12, 9);
+        ctx.strokeStyle = "rgba(19,22,16,0.3)";
+        ctx.strokeRect(x - 36 + w2 * 26, y - 2, 12, 9);
+      }
+    }
+    // little InstaBuilt sign on the wall
+    ctx.fillStyle = "#f4f2ed";
+    ctx.fillRect(x + 40, y + 34, 16, 10);
+    ctx.strokeStyle = "#5f6327";
     ctx.lineWidth = 1;
-    ctx.strokeRect(x + 18, y + 24, 7, 7);
-    ctx.beginPath(); ctx.moveTo(x + 21.5, y + 24); ctx.lineTo(x + 21.5, y + 31); ctx.stroke();
+    ctx.strokeRect(x + 40, y + 34, 16, 10);
+    ctx.fillStyle = "#5f6327";
+    ctx.font = "bold 7px Montserrat, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("IB", x + 48, y + 42);
+    ctx.textAlign = "start";
   }
 
   function drawPlayer() {

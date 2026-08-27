@@ -431,7 +431,7 @@
   var SAND_Y = 1360;           // beach starts here
   var SEA_Y = 1420;            // water starts here
   var SHIP_X = 1150, SHIP_Y = 1510;  // decorative ship
-  var DOCK_X = 700, DOCK_Y = 1480;   // fishing dock (fishing spot at the end)
+  var DOCK_X = 700, DOCK_Y = 1570;   // fishing dock (fishing spot at the end, deep in the sea)
   var VW = 960, VH = 700;      // viewport (css px)
   var DPR = 1;
 
@@ -1358,61 +1358,141 @@
     ctx.fillRect(sx - 8, sy + 16, 16, 26);
   }
 
-  // small wooden fishing dock at the beach, reaching into the sea
+  // detailed wooden fishing dock at the beach, reaching deep into the sea
   function drawDock() {
     var dx = DOCK_X - state.cam.x;
-    var top = SAND_Y - state.cam.y, bottom = DOCK_Y + 16 - state.cam.y;
-    if (dx < -160 || dx > VW + 160 || bottom < 0 || top > VH) return;
-    // posts (pilings) reaching into the water
-    ctx.fillStyle = "#4a321c";
-    for (var post = -2; post <= 2; post++) {
-      var px = dx + post * 26;
-      ctx.fillRect(px - 4, top + 8, 8, bottom - top - 8);
+    var top = SAND_Y - state.cam.y, bottom = DOCK_Y + 14 - state.cam.y;
+    if (dx < -220 || dx > VW + 220 || bottom < 0 || top > VH) return;
+    // pilings (deep posts reaching into the water, with cross braces)
+    ctx.fillStyle = "#3d2a17";
+    for (var post = -3; post <= 3; post++) {
+      var px = dx + post * 24;
+      ctx.fillRect(px - 4, top + 6, 8, bottom - top - 6);
     }
-    // deck planks
-    ctx.fillStyle = "#8a6238";
-    ctx.fillRect(dx - 64, top, 128, bottom - top);
-    ctx.fillStyle = "#a5764a";
-    ctx.fillRect(dx - 64, top, 128, 8);
-    // plank seams
-    ctx.strokeStyle = "rgba(60, 40, 20, 0.5)";
-    ctx.lineWidth = 1.5;
-    for (var seam = 1; seam < 8; seam++) {
-      var syy = top + 14 + seam * ((bottom - top - 18) / 8);
+    // cross braces (diagonal supports)
+    ctx.strokeStyle = "#4a321c";
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    for (var b = -2; b <= 2; b += 2) {
+      var bx = dx + b * 48;
       ctx.beginPath();
-      ctx.moveTo(dx - 60, syy);
-      ctx.lineTo(dx + 60, syy);
+      ctx.moveTo(bx - 20, top + 90);
+      ctx.lineTo(bx + 26, top + 160);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(bx + 20, top + 90);
+      ctx.lineTo(bx - 26, top + 160);
       ctx.stroke();
     }
-    // end platform (wider)
-    ctx.fillStyle = "#9a6e40";
-    ctx.fillRect(dx - 34, bottom - 14, 68, 14);
-    // barrel on the dock
-    ctx.fillStyle = "#7a5230";
+    ctx.lineCap = "butt";
+    // deck planks (long, horizontal)
+    ctx.fillStyle = "#8a6238";
+    ctx.fillRect(dx - 84, top, 168, bottom - top);
+    // lighter top board
+    ctx.fillStyle = "#a5764a";
+    ctx.fillRect(dx - 84, top, 168, 9);
+    // plank seams + wood grain
+    ctx.strokeStyle = "rgba(60, 40, 20, 0.45)";
+    ctx.lineWidth = 1.5;
+    for (var seam = 1; seam < 12; seam++) {
+      var syy = top + 16 + seam * ((bottom - top - 24) / 11);
+      ctx.beginPath();
+      ctx.moveTo(dx - 80, syy);
+      ctx.lineTo(dx + 80, syy);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "rgba(60, 40, 20, 0.2)";
+    ctx.lineWidth = 1;
+    for (var grain = 0; grain < 6; grain++) {
+      var gx = dx - 60 + grain * 24;
+      ctx.beginPath();
+      ctx.moveTo(gx, top + 12);
+      ctx.quadraticCurveTo(gx + 6, top + (bottom - top) / 2, gx - 4, bottom - 10);
+      ctx.stroke();
+    }
+    // handrail posts + rope along the dock
+    ctx.fillStyle = "#5a3d24";
+    for (var rail = -3; rail <= 3; rail++) {
+      var rx = dx + rail * 24;
+      ctx.fillRect(rx - 2.5, top - 26, 5, 26);
+    }
+    ctx.strokeStyle = "rgba(214, 200, 160, 0.75)";
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(dx - 44, top + 30, 9, 0, 7);
+    ctx.moveTo(dx - 80, top - 30);
+    for (var rp = -3; rp <= 3; rp++) {
+      ctx.lineTo(dx + rp * 24, top - 30 + (rp % 2 === 0 ? 0 : 5));
+    }
+    ctx.lineTo(dx + 80, top - 30);
+    ctx.stroke();
+    // end platform (wider, for fishing)
+    ctx.fillStyle = "#9a6e40";
+    ctx.fillRect(dx - 44, bottom - 16, 88, 16);
+    ctx.fillStyle = "#8a5f38";
+    ctx.fillRect(dx - 44, bottom - 16, 88, 4);
+    // crate + barrel + rope coil on the dock
+    ctx.fillStyle = "#7a5230";
+    ctx.fillRect(dx - 62, top + 34, 20, 18);
+    ctx.strokeStyle = "#5a3d24";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(dx - 62, top + 34, 20, 18);
+    ctx.beginPath(); ctx.moveTo(dx - 52, top + 34); ctx.lineTo(dx - 52, top + 52); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(dx - 62, top + 43); ctx.lineTo(dx - 42, top + 43); ctx.stroke();
+    // barrel
+    ctx.fillStyle = "#8a5f38";
+    ctx.beginPath();
+    ctx.arc(dx - 60, top + 76, 10, 0, 7);
     ctx.fill();
     ctx.strokeStyle = "#5a3d24";
     ctx.lineWidth = 2;
     ctx.stroke();
-    // lantern post at the end
-    ctx.fillStyle = "#4a321c";
-    ctx.fillRect(dx + 40, bottom - 34, 5, 22);
-    ctx.fillStyle = "rgba(255, 200, 90, 0.5)";
+    ctx.beginPath(); ctx.moveTo(dx - 60, top + 66); ctx.lineTo(dx - 60, top + 86); ctx.stroke();
+    // rope coil
+    ctx.strokeStyle = "#c9b483";
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.arc(dx + 42, bottom - 38, 5, 0, 7);
+    ctx.arc(dx + 62, top + 40, 8, 0, 7);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(dx + 62, top + 40, 4.5, 0, 7);
+    ctx.stroke();
+    // lantern post at the end with warm glow
+    ctx.fillStyle = "#4a321c";
+    ctx.fillRect(dx + 48, bottom - 44, 6, 30);
+    ctx.fillRect(dx + 44, bottom - 50, 14, 8);
+    ctx.fillStyle = "rgba(255, 200, 90, 0.55)";
+    ctx.beginPath();
+    ctx.arc(dx + 51, bottom - 52, 6 + Math.sin(T * 3) * 1.5, 0, 7);
     ctx.fill();
+    ctx.fillStyle = "rgba(255, 220, 130, 0.18)";
+    ctx.beginPath();
+    ctx.arc(dx + 51, bottom - 52, 22, 0, 7);
+    ctx.fill();
+    // small anchor hanging off the end
+    ctx.strokeStyle = "#3c3c3c";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(dx - 58, bottom - 2, 7, Math.PI, 0);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(dx - 58, bottom - 8);
+    ctx.lineTo(dx - 58, bottom + 8);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(dx - 66, bottom + 6);
+    ctx.lineTo(dx - 50, bottom + 6);
+    ctx.stroke();
     // fishing bobber when actively fishing
     if (state.fish) {
-      var bb = dx + 78, bby = bottom - 6 + Math.sin(T * 2.5) * 3;
+      var bb = dx + 96, bby = bottom - 4 + Math.sin(T * 2.5) * 3;
       ctx.fillStyle = "#e05656";
       ctx.beginPath();
-      ctx.arc(bb, bby, 5, 0, 7);
+      ctx.arc(bb, bby, 5.5, 0, 7);
       ctx.fill();
       ctx.strokeStyle = "rgba(244, 242, 237, 0.7)";
       ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.moveTo(dx + 42, bottom - 44);
+      ctx.moveTo(dx + 51, bottom - 56);
       ctx.lineTo(bb, bby);
       ctx.stroke();
       // ripple
@@ -1487,57 +1567,86 @@
     }
   }
 
-  // rocky cave mouth on the surface (right edge of the map) — grassy hillside arch
+  // cave mouth on the surface (right edge) — stone cave in yellow soil, per reference art
   function drawCaveMouth() {
     var s = worldToScreen(state.caveEnterX, state.caveEnterY);
-    // dark opening
-    var og = ctx.createRadialGradient(s.x, s.y, 6, s.x, s.y, 86);
-    og.addColorStop(0, "#120d09");
-    og.addColorStop(0.75, "#241c14");
-    og.addColorStop(1, "#3a2f22");
+    // yellow soil mound around the entrance
+    ctx.fillStyle = "#a07828";
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y + 20, 150, 120, 0, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = "#b48c28";
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y + 30, 132, 100, 0, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = "#c4a040";
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y + 38, 112, 82, 0, 0, 7);
+    ctx.fill();
+    // soil speckles
+    ctx.fillStyle = "rgba(120, 88, 28, 0.35)";
+    for (var sp = 0; sp < 24; sp++) {
+      var a = Math.random() * 6.28, rr = 30 + Math.random() * 100;
+      ctx.beginPath();
+      ctx.arc(s.x + Math.cos(a) * rr, s.y + 30 + Math.sin(a) * rr * 0.7, 2 + Math.random() * 2.5, 0, 7);
+      ctx.fill();
+    }
+    // dark passage (black opening) — the cave mouth
+    var og = ctx.createRadialGradient(s.x, s.y + 4, 8, s.x, s.y + 4, 95);
+    og.addColorStop(0, "#000000");
+    og.addColorStop(0.7, "#0a0a0a");
+    og.addColorStop(1, "#1a1a18");
     ctx.fillStyle = og;
     ctx.beginPath();
-    ctx.ellipse(s.x, s.y, 46, 78, 0, 0, 7);
+    ctx.ellipse(s.x, s.y + 4, 52, 84, 0, 0, 7);
     ctx.fill();
-    // rocky arch frame
+    // big rounded grey stones framing the passage (like the reference vector)
     var rocks = [
-      [-66, -50, 22], [66, -54, 20], [-74, 0, 19], [74, 0, 20],
-      [-64, 50, 21], [66, 54, 19], [-42, -80, 20], [42, -82, 19], [0, -92, 24], [-14, -96, 16], [16, -97, 15]
+      [-82, -40, 26], [82, -44, 25], [-96, 6, 24], [96, 6, 24],
+      [-84, 52, 25], [84, 54, 24], [-58, -80, 26], [58, -84, 25], [0, -96, 28],
+      [-20, -104, 18], [20, -106, 17], [-100, -10, 16], [100, -12, 15],
+      [-70, 86, 18], [70, 88, 17], [-30, 96, 20], [30, 98, 19]
     ];
     for (var i = 0; i < rocks.length; i++) {
       var r = rocks[i];
-      ctx.fillStyle = "#6e675f";
+      ctx.fillStyle = "#646450";
       ctx.beginPath();
       ctx.arc(s.x + r[0], s.y + r[1], r[2], 0, 7);
       ctx.fill();
-      ctx.fillStyle = "#57504a";
+      ctx.fillStyle = "#505050";
       ctx.beginPath();
-      ctx.arc(s.x + r[0] - 3, s.y + r[1] + 3, r[2] * 0.6, 0, 7);
+      ctx.arc(s.x + r[0] - 3, s.y + r[1] + 4, r[2] * 0.62, 0, 7);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.14)";
+      ctx.beginPath();
+      ctx.arc(s.x + r[0] + 3, s.y + r[1] - 4, r[2] * 0.3, 0, 7);
       ctx.fill();
     }
-    // grass tufts on top of the arch
+    // inner shadow ring around the passage (depth)
+    ctx.strokeStyle = "rgba(30, 26, 16, 0.55)";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y + 4, 58, 90, 0, 0, 7);
+    ctx.stroke();
+    // small grass tufts peeking at the base of the mound
     ctx.fillStyle = "#7c8f3d";
-    for (var g = 0; g < 7; g++) {
+    for (var g = 0; g < 6; g++) {
       ctx.beginPath();
-      ctx.arc(s.x - 44 + g * 15, s.y - 88 - Math.abs(g - 3) * 5, 11, 0, 7);
+      ctx.arc(s.x - 108 + g * 44, s.y + 104, 9, 0, 7);
       ctx.fill();
     }
-    ctx.fillStyle = "#97ab52";
-    for (var g2 = 0; g2 < 5; g2++) {
-      ctx.beginPath();
-      ctx.arc(s.x - 30 + g2 * 16, s.y - 96 - Math.abs(g2 - 2) * 4, 7, 0, 7);
-      ctx.fill();
-    }
-    // sign
+    // sign on a wooden post
+    ctx.fillStyle = "#5a3d24";
+    ctx.fillRect(s.x - 132, s.y - 64, 5, 34);
     ctx.fillStyle = "#f4f2ed";
-    ctx.fillRect(s.x - 30, s.y - 130, 60, 22);
+    ctx.fillRect(s.x - 168, s.y - 86, 76, 24);
     ctx.strokeStyle = "#6f7231";
     ctx.lineWidth = 2;
-    ctx.strokeRect(s.x - 30, s.y - 130, 60, 22);
+    ctx.strokeRect(s.x - 168, s.y - 86, 76, 24);
     ctx.fillStyle = "#5f6327";
     ctx.font = "bold 12px Montserrat, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("CAVE", s.x, s.y - 114);
+    ctx.fillText("CAVE", s.x - 130, s.y - 69);
     ctx.textAlign = "start";
   }
 

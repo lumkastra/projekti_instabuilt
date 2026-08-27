@@ -323,7 +323,7 @@
   <h1>Pop-Up <em>Builder</em></h1>
   <p>You're on a brand-new InstaBuilt site with a <strong>stone axe</strong> and a mission: gather wood, mine stone and rare ores in the <strong>cave</strong>, trade with the <strong>Shopkeeper</strong>, buy the kits you need — and build a <strong>28 m² Pop-Up Solution</strong>.</p>
   <p style="font-size:0.82rem; color:rgba(244,242,237,.65)">Take a break: buy a <strong>fishing rod</strong> at the shop and fish off the dock on the beach!</p>
-  <p style="font-size:0.82rem; color:rgba(244,242,237,.65)">Move: WASD / arrows · Interact: E (or click) · Touch: pad + ⚒ button</p>
+  <p style="font-size:0.82rem; color:rgba(244,242,237,.65)">Move: WASD / arrows · Interact: E (or click) · Music: M · Touch: pad + ⚒ button</p>
   <button class="btn" id="startBtn">Start building</button>
 </div>
 
@@ -580,9 +580,41 @@
   }
   // resume audio on first user gesture + start loading the Minecraft sounds
   ["pointerdown", "keydown", "touchstart"].forEach(function (evt) {
-    window.addEventListener(evt, function () { var a = ac(); if (a && a.state === "suspended") a.resume(); loadMinecraftSfx(); }, { once: true });
+    window.addEventListener(evt, function () {
+      var a = ac();
+      if (a && a.state === "suspended") a.resume();
+      loadMinecraftSfx();
+      startMusic();
+    }, { once: true });
   });
   loadMinecraftSfx();
+
+  /* ================= background music (Morning Light, low volume) ================= */
+  var musicEl = null;
+  var musicOn = true;
+  function startMusic() {
+    if (musicEl) return;
+    try {
+      musicEl = new Audio("assets/music/morning_light.mp3");
+      musicEl.loop = true;
+      musicEl.volume = 0.15; // quiet background
+      var tryPlay = function () {
+        var pr = musicEl.play();
+        if (pr && pr.catch) pr.catch(function () {});
+      };
+      musicEl.addEventListener("canplaythrough", tryPlay);
+      tryPlay();
+    } catch (e) { musicEl = null; }
+  }
+  // M toggles music on/off
+  window.addEventListener("keydown", function (ev) {
+    if (ev.key === "m" || ev.key === "M") {
+      if (!musicEl) return;
+      musicOn = !musicOn;
+      if (musicOn) { var pr = musicEl.play(); if (pr && pr.catch) pr.catch(function () {}); }
+      else musicEl.pause();
+    }
+  });
 
   /* ================= world generation ================= */
   function farFrom(x, y, list, min) {

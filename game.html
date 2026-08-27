@@ -436,7 +436,7 @@
   var VW = 960, VH = 700;      // viewport (css px)
   var DPR = 1;
 
-  var RECIPE = { wood: 25, stone: 15, foundation: 1, panels: 1, window: 1 };
+  var RECIPE = { wood: 9, stone: 6, foundation: 1, panels: 1, window: 1 };
   var ORE_DUR = { stone: 1.5, coal: 1.7, iron: 1.9, copper: 2.0, diamond: 2.5 };
   var ORE_IRON_DUR = { stone: 0.95, coal: 1.05, iron: 1.15, copper: 1.25, diamond: 1.6 };
   var ORE_COLORS = { stone: "#aab0b8", coal: "#3a3733", iron: "#c0793f", copper: "#4e9d6e", diamond: "#6fe3f0" };
@@ -469,7 +469,7 @@
     "Enter the cave at the end of the map and mine 4 stone (E near a rock)",
     "Talk to the Shopkeeper at the start of the map",
     "Buy the Foundation, Panel and Window kits at the shop",
-    "Gather 25 wood and 15 stone",
+    "Gather 9 wood and 6 stone",
     "Build the Pop-Up at the build site!"
   ];
 
@@ -531,7 +531,7 @@
   function genChests() {
     state.chests = [];
     var plan = [
-      { min: 2, max: 3 }  // 2-3 hidden shafts per visit
+      { min: 4, max: 6 }  // 4-6 hidden shafts per visit
     ];
     plan.forEach(function (g) {
       var n = g.min + Math.floor(Math.random() * (g.max - g.min + 1));
@@ -606,6 +606,7 @@
     state.chop = null;
     state.build = null;
     state.fish = null;
+    state.buildCount = 0;
     state.objective = 0;
     state.elapsed = 0;
     state.started = true;
@@ -837,7 +838,7 @@
     document.getElementById("sellFish").disabled = state.inv.fish === 0;
     document.getElementById("shopNote").textContent = state.player.tool === "iron"
       ? "You own the iron axe. Stone and ores come from the cave — it resets every time you enter!"
-      : "Recipe for the 28 m² Pop-Up: 25 wood + 15 stone + Foundation + Panels + Window. Stone & ores: cave at the end of the map.";
+      : "Recipe for the 28 m² Pop-Up: 9 wood + 6 stone + Foundation + Panels + Window. Build as many as you want — infinite building!";
   }
 
   function buy(kind, price) {
@@ -1069,7 +1070,7 @@
         b.t += dt;
         if (b.t >= b.dur) {
           state.build = null;
-          winGame();
+          completeBuild();
         }
       }
     }
@@ -1118,13 +1119,20 @@
     floats.push({ x: x, y: y, txt: txt, color: color, t: 0 });
   }
 
-  function winGame() {
-    state.running = false;
-    document.getElementById("winTime").textContent = fmt(state.elapsed);
-    document.getElementById("winWood").textContent = state.total.wood;
-    document.getElementById("winStone").textContent = state.total.stone;
-    document.getElementById("winCoins").textContent = state.total.coins;
-    document.getElementById("winOverlay").classList.remove("hidden");
+  // building is infinite: deliver the Pop-Up, get paid, and start the next one
+  function completeBuild() {
+    // consume the materials used for this Pop-Up
+    state.inv.wood -= RECIPE.wood;
+    state.inv.stone -= RECIPE.stone;
+    state.buildCount = (state.buildCount || 0) + 1;
+    var reward = 60 + state.buildCount * 10; // grows as you build more
+    state.inv.coins += reward;
+    state.total.coins += reward;
+    addFloat(state.pad.x, state.pad.y - 90, "Pop-Up delivered! +" + reward + "c", "#d9e0a8");
+    // keep the game going: objective loops back to gathering for the next one
+    state.objective = 4;
+    updateObjective();
+    updateHud();
   }
 
   function fmt(sec) {
@@ -1155,6 +1163,7 @@
   var crystals = [];        // glowing crystal clusters (ambient)
   var torchSpots = [];      // warm light pools in the cave
   var caveSparkles = [];    // twinkling dust in the cave
+  var caveTimbers = [];     // wooden support timbers (mine props) in the cave
 
   (function makeDecor() {
     var i, j;
@@ -1217,10 +1226,20 @@
     for (i = 0; i < 9; i++) {
       crystals.push({ fx: Math.random(), fy: Math.random(), c: cryCols[i % cryCols.length], s: 3 + Math.random() * 5 });
     }
-    torchSpots.push({ fx: 0.16, fy: 0.5 });
-    torchSpots.push({ fx: 0.5, fy: 0.32 });
-    torchSpots.push({ fx: 0.78, fy: 0.62 });
-    torchSpots.push({ fx: 0.38, fy: 0.78 });
+    torchSpots.push({ fx: 0.12, fy: 0.5 });
+    torchSpots.push({ fx: 0.28, fy: 0.22 });
+    torchSpots.push({ fx: 0.5, fy: 0.14 });
+    torchSpots.push({ fx: 0.72, fy: 0.24 });
+    torchSpots.push({ fx: 0.9, fy: 0.4 });
+    torchSpots.push({ fx: 0.82, fy: 0.72 });
+    torchSpots.push({ fx: 0.55, fy: 0.85 });
+    torchSpots.push({ fx: 0.3, fy: 0.68 });
+    torchSpots.push({ fx: 0.18, fy: 0.9 });
+    torchSpots.push({ fx: 0.65, fy: 0.5 });
+    // wooden support timbers scattered through the cave (mine props)
+    for (i = 0; i < 16; i++) {
+      caveTimbers.push({ fx: Math.random(), fy: Math.random(), h: 30 + Math.random() * 40, seed: Math.random() * 10 });
+    }
     for (i = 0; i < 46; i++) {
       caveSparkles.push({ fx: Math.random(), fy: Math.random(), p: Math.random() * 7 });
     }
@@ -1885,16 +1904,61 @@
     ctx.closePath();
     ctx.fill();
 
-    // torch light pools (warm glow, subtle flicker)
+    // torches: warm glow + visible wooden torch fixtures
     for (var t = 0; t < torchSpots.length; t++) {
       var tp = torchSpots[t];
       var tx = tp.fx * CW, ty = tp.fy * CH;
       var flick = 0.85 + 0.15 * Math.sin(T * 6 + t * 2.1);
-      var lg = ctx.createRadialGradient(tx - state.cam.x, ty - state.cam.y, 20, tx - state.cam.x, ty - state.cam.y, 300 * flick);
-      lg.addColorStop(0, "rgba(255, 176, 84, 0.13)");
+      var lg = ctx.createRadialGradient(tx - state.cam.x, ty - state.cam.y, 20, tx - state.cam.x, ty - state.cam.y, 320 * flick);
+      lg.addColorStop(0, "rgba(255, 176, 84, 0.16)");
       lg.addColorStop(1, "rgba(255, 176, 84, 0)");
       ctx.fillStyle = lg;
-      ctx.fillRect(tx - state.cam.x - 300, ty - state.cam.y - 300, 600, 600);
+      ctx.fillRect(tx - state.cam.x - 320, ty - state.cam.y - 320, 640, 640);
+      // torch pole
+      var sx = tx - state.cam.x, sy = ty - state.cam.y;
+      ctx.fillStyle = "#5a3d24";
+      ctx.fillRect(sx - 3, sy - 4, 6, 26);
+      ctx.fillStyle = "#7a5230";
+      ctx.fillRect(sx - 3, sy - 4, 6, 4);
+      // flame (flickering)
+      var fl = 6 + flick * 3;
+      ctx.fillStyle = "rgba(255, 120, 40, 0.9)";
+      ctx.beginPath();
+      ctx.ellipse(sx, sy - 10 - fl * 0.3, 4, fl, 0, 0, 7);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255, 220, 120, 0.95)";
+      ctx.beginPath();
+      ctx.ellipse(sx, sy - 10 - fl * 0.4, 2.2, fl * 0.55, 0, 0, 7);
+      ctx.fill();
+    }
+
+    // wooden support timbers (mine props) throughout the cave
+    for (var tm = 0; tm < caveTimbers.length; tm++) {
+      var tb = caveTimbers[tm];
+      var tx2 = tb.fx * CW, ty2 = tb.fy * CH;
+      var px2 = tx2 - state.cam.x, py2 = ty2 - state.cam.y;
+      // two posts + crossbeam
+      ctx.fillStyle = "#6b4a2b";
+      ctx.fillRect(px2 - 18, py2 - tb.h, 7, tb.h);
+      ctx.fillRect(px2 + 11, py2 - tb.h, 7, tb.h);
+      // crossbeam on top
+      ctx.fillStyle = "#8a6238";
+      ctx.fillRect(px2 - 24, py2 - tb.h - 6, 48, 8);
+      ctx.fillStyle = "#a5764a";
+      ctx.fillRect(px2 - 24, py2 - tb.h - 6, 48, 3);
+      // post highlights
+      ctx.fillStyle = "rgba(255,255,255,0.1)";
+      ctx.fillRect(px2 - 17, py2 - tb.h, 2, tb.h);
+      ctx.fillRect(px2 + 12, py2 - tb.h, 2, tb.h);
+      // occasional plank lying on the floor
+      if (tb.seed > 5) {
+        ctx.fillStyle = "#7a5230";
+        ctx.save();
+        ctx.translate(px2, py2 + 4);
+        ctx.rotate(tb.seed * 0.3);
+        ctx.fillRect(-16, -3, 32, 6);
+        ctx.restore();
+      }
     }
 
     // floor pebbles

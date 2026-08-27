@@ -431,7 +431,8 @@
   var SAND_Y = 1360;           // beach starts here
   var SEA_Y = 1420;            // water starts here
   var SHIP_X = 1150, SHIP_Y = 1510;  // decorative ship
-  var DOCK_X = 700, DOCK_Y = 1570;   // fishing dock (fishing spot at the end, deep in the sea)
+  var DOCK_X = 700, DOCK_Y = 1570;   // dock end (pilings reach the water)
+  var FISH_Y = 1520;                 // fishing spot: platform in front of the hut
   var VW = 960, VH = 700;      // viewport (css px)
   var DPR = 1;
 
@@ -618,7 +619,7 @@
       spots.push({ x: state.npc.x, y: state.npc.y, kind: "npc" });
       spots.push({ x: state.pad.x, y: state.pad.y, kind: "pad" });
       spots.push({ x: state.caveEnterX - 40, y: state.caveEnterY, kind: "caveEnter" });
-      spots.push({ x: DOCK_X, y: DOCK_Y, kind: "fish" });
+      spots.push({ x: DOCK_X, y: FISH_Y, kind: "fish" });
     }
     return spots;
   }
@@ -698,7 +699,7 @@
       return;
     }
     state.fish = { phase: "cast", t: 0, dur: 0.8 };
-    addFloat(DOCK_X, DOCK_Y - 44, "Cast…", "#cfe0f0");
+    addFloat(DOCK_X, FISH_Y - 44, "Cast…", "#cfe0f0");
   }
 
   function startGather(target, kind) {
@@ -924,21 +925,21 @@
     if (state.fish) {
       var f = state.fish;
       if (p.moving || clickTarget ||
-          Math.hypot(DOCK_X - p.x, DOCK_Y - p.y) > 160) {
+          Math.hypot(DOCK_X - p.x, FISH_Y - p.y) > 170) {
         state.fish = null;
       } else {
         f.t += dt;
         if (f.phase === "cast" && f.t >= f.dur) {
           f.phase = "wait"; f.t = 0; f.dur = 2.0 + Math.random() * 2.2;
-          addFloat(DOCK_X, DOCK_Y - 44, "…", "#cfe0f0");
+          addFloat(DOCK_X, FISH_Y - 44, "…", "#cfe0f0");
         } else if (f.phase === "wait" && f.t >= f.dur) {
           f.phase = "bite"; f.t = 0; f.dur = 1.1;
-          addFloat(DOCK_X, DOCK_Y - 44, "Bite!", "#f2e3b0");
+          addFloat(DOCK_X, FISH_Y - 44, "Bite!", "#f2e3b0");
         } else if (f.phase === "bite" && f.t >= f.dur) {
           var n = 1 + Math.floor(Math.random() * 2); // 1-2 fish
           state.inv.fish += n;
           state.total.fish += n;
-          addFloat(DOCK_X, DOCK_Y - 60, "+" + n + " fish", "#8fd0f0");
+          addFloat(DOCK_X, FISH_Y - 60, "+" + n + " fish", "#8fd0f0");
           state.fish = null;
           updateHud();
         }
@@ -1358,133 +1359,137 @@
     ctx.fillRect(sx - 8, sy + 16, 16, 26);
   }
 
-  // detailed wooden fishing dock at the beach, reaching deep into the sea
+  // wooden fishing pier with a small hut at the end (Stardew-style)
   function drawDock() {
     var dx = DOCK_X - state.cam.x;
-    var top = SAND_Y - state.cam.y, bottom = DOCK_Y + 14 - state.cam.y;
-    if (dx < -220 || dx > VW + 220 || bottom < 0 || top > VH) return;
-    // pilings (deep posts reaching into the water, with cross braces)
-    ctx.fillStyle = "#3d2a17";
-    for (var post = -3; post <= 3; post++) {
-      var px = dx + post * 24;
-      ctx.fillRect(px - 4, top + 6, 8, bottom - top - 6);
+    var top = SAND_Y - state.cam.y, bottom = DOCK_Y + 10 - state.cam.y;
+    if (dx < -240 || dx > VW + 240 || bottom < 0 || top > VH) return;
+    // water shadow under the dock
+    ctx.fillStyle = "rgba(0, 40, 80, 0.35)";
+    ctx.fillRect(dx - 92, top, 184, bottom - top);
+    // pilings (thick posts in the water)
+    ctx.fillStyle = "#4a3018";
+    for (var post = -4; post <= 4; post++) {
+      var px = dx + post * 22;
+      ctx.fillRect(px - 5, top + 10, 10, bottom - top - 10);
+      // highlight on the piling
+      ctx.fillStyle = "rgba(255,255,255,0.12)";
+      ctx.fillRect(px - 4, top + 12, 3, bottom - top - 14);
+      ctx.fillStyle = "#4a3018";
     }
-    // cross braces (diagonal supports)
-    ctx.strokeStyle = "#4a321c";
-    ctx.lineWidth = 5;
-    ctx.lineCap = "round";
-    for (var b = -2; b <= 2; b += 2) {
-      var bx = dx + b * 48;
+    // deck planks (light, horizontal — Stardew palette)
+    ctx.fillStyle = "#b07030";
+    ctx.fillRect(dx - 92, top, 184, bottom - top);
+    ctx.fillStyle = "#c08040";
+    ctx.fillRect(dx - 92, top, 184, 10);
+    // plank seams (horizontal lines)
+    ctx.strokeStyle = "rgba(90, 55, 20, 0.5)";
+    ctx.lineWidth = 2;
+    for (var seam = 1; seam < 14; seam++) {
+      var syy = top + 14 + seam * ((bottom - top - 22) / 13);
       ctx.beginPath();
-      ctx.moveTo(bx - 20, top + 90);
-      ctx.lineTo(bx + 26, top + 160);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(bx + 20, top + 90);
-      ctx.lineTo(bx - 26, top + 160);
+      ctx.moveTo(dx - 88, syy);
+      ctx.lineTo(dx + 88, syy);
       ctx.stroke();
     }
-    ctx.lineCap = "butt";
-    // deck planks (long, horizontal)
-    ctx.fillStyle = "#8a6238";
-    ctx.fillRect(dx - 84, top, 168, bottom - top);
-    // lighter top board
-    ctx.fillStyle = "#a5764a";
-    ctx.fillRect(dx - 84, top, 168, 9);
-    // plank seams + wood grain
-    ctx.strokeStyle = "rgba(60, 40, 20, 0.45)";
+    // plank end-caps (vertical seams, alternating)
+    ctx.strokeStyle = "rgba(90, 55, 20, 0.35)";
     ctx.lineWidth = 1.5;
-    for (var seam = 1; seam < 12; seam++) {
-      var syy = top + 16 + seam * ((bottom - top - 24) / 11);
+    for (var cap = 0; cap < 9; cap++) {
+      var cxx = dx - 84 + cap * 20;
       ctx.beginPath();
-      ctx.moveTo(dx - 80, syy);
-      ctx.lineTo(dx + 80, syy);
+      ctx.moveTo(cxx, top + 12);
+      ctx.lineTo(cxx, bottom - 10);
       ctx.stroke();
     }
-    ctx.strokeStyle = "rgba(60, 40, 20, 0.2)";
-    ctx.lineWidth = 1;
-    for (var grain = 0; grain < 6; grain++) {
-      var gx = dx - 60 + grain * 24;
+
+    // ---- fishing hut at the end of the pier ----
+    var hx = dx, hy = bottom - 46; // hut floor sits near the water line
+    // hut shadow on the deck
+    ctx.fillStyle = "rgba(0,0,0,0.15)";
+    ctx.fillRect(hx - 44, hy + 2, 88, 10);
+    // back wall
+    ctx.fillStyle = "#704030";
+    ctx.fillRect(hx - 40, hy - 38, 80, 38);
+    // wall planks (vertical)
+    ctx.strokeStyle = "rgba(50, 25, 10, 0.45)";
+    ctx.lineWidth = 2;
+    for (var wp = -3; wp <= 3; wp++) {
+      var wxx = hx + wp * 12;
       ctx.beginPath();
-      ctx.moveTo(gx, top + 12);
-      ctx.quadraticCurveTo(gx + 6, top + (bottom - top) / 2, gx - 4, bottom - 10);
+      ctx.moveTo(wxx, hy - 36);
+      ctx.lineTo(wxx, hy);
       ctx.stroke();
     }
-    // handrail posts + rope along the dock
-    ctx.fillStyle = "#5a3d24";
-    for (var rail = -3; rail <= 3; rail++) {
-      var rx = dx + rail * 24;
-      ctx.fillRect(rx - 2.5, top - 26, 5, 26);
-    }
-    ctx.strokeStyle = "rgba(214, 200, 160, 0.75)";
-    ctx.lineWidth = 3;
+    // roof (dark, with overhang)
+    ctx.fillStyle = "#4a3018";
     ctx.beginPath();
-    ctx.moveTo(dx - 80, top - 30);
-    for (var rp = -3; rp <= 3; rp++) {
-      ctx.lineTo(dx + rp * 24, top - 30 + (rp % 2 === 0 ? 0 : 5));
-    }
-    ctx.lineTo(dx + 80, top - 30);
-    ctx.stroke();
-    // end platform (wider, for fishing)
-    ctx.fillStyle = "#9a6e40";
-    ctx.fillRect(dx - 44, bottom - 16, 88, 16);
-    ctx.fillStyle = "#8a5f38";
-    ctx.fillRect(dx - 44, bottom - 16, 88, 4);
-    // crate + barrel + rope coil on the dock
-    ctx.fillStyle = "#7a5230";
-    ctx.fillRect(dx - 62, top + 34, 20, 18);
-    ctx.strokeStyle = "#5a3d24";
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(dx - 62, top + 34, 20, 18);
-    ctx.beginPath(); ctx.moveTo(dx - 52, top + 34); ctx.lineTo(dx - 52, top + 52); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(dx - 62, top + 43); ctx.lineTo(dx - 42, top + 43); ctx.stroke();
-    // barrel
-    ctx.fillStyle = "#8a5f38";
-    ctx.beginPath();
-    ctx.arc(dx - 60, top + 76, 10, 0, 7);
+    ctx.moveTo(hx - 56, hy - 34);
+    ctx.lineTo(hx + 56, hy - 34);
+    ctx.lineTo(hx + 44, hy - 54);
+    ctx.lineTo(hx - 44, hy - 54);
+    ctx.closePath();
     ctx.fill();
+    ctx.fillStyle = "#5a3d24";
+    ctx.beginPath();
+    ctx.moveTo(hx - 44, hy - 52);
+    ctx.lineTo(hx + 44, hy - 52);
+    ctx.lineTo(hx + 34, hy - 66);
+    ctx.lineTo(hx - 34, hy - 66);
+    ctx.closePath();
+    ctx.fill();
+    // roof ridge highlight
+    ctx.fillStyle = "rgba(255,255,255,0.12)";
+    ctx.fillRect(hx - 34, hy - 66, 68, 3);
+    // doorway (dark opening)
+    ctx.fillStyle = "#1c120a";
+    ctx.fillRect(hx - 12, hy - 24, 24, 24);
+    // door frame
+    ctx.strokeStyle = "#8a5f38";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(hx - 12, hy - 24, 24, 24);
+    // window with warm glow
+    ctx.fillStyle = "#f2d080";
+    ctx.fillRect(hx + 16, hy - 30, 12, 10);
     ctx.strokeStyle = "#5a3d24";
     ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(dx - 60, top + 66); ctx.lineTo(dx - 60, top + 86); ctx.stroke();
-    // rope coil
+    ctx.strokeRect(hx + 16, hy - 30, 12, 10);
+    ctx.beginPath(); ctx.moveTo(hx + 22, hy - 30); ctx.lineTo(hx + 22, hy - 20); ctx.stroke();
+    // small chimney
+    ctx.fillStyle = "#3d2a17";
+    ctx.fillRect(hx - 26, hy - 60, 8, 8);
+    // lantern beside the door with warm glow
+    ctx.fillStyle = "#4a321c";
+    ctx.fillRect(hx + 28, hy - 22, 4, 12);
+    ctx.fillStyle = "rgba(255, 200, 90, 0.65)";
+    ctx.beginPath();
+    ctx.arc(hx + 30, hy - 24, 4 + Math.sin(T * 3) * 1.2, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255, 220, 130, 0.15)";
+    ctx.beginPath();
+    ctx.arc(hx + 30, hy - 24, 18, 0, 7);
+    ctx.fill();
+    // crate beside the hut
+    ctx.fillStyle = "#8a5f38";
+    ctx.fillRect(hx - 56, hy - 16, 16, 16);
+    ctx.strokeStyle = "#5a3d24";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(hx - 56, hy - 16, 16, 16);
+    ctx.beginPath(); ctx.moveTo(hx - 48, hy - 16); ctx.lineTo(hx - 48, hy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(hx - 56, hy - 8); ctx.lineTo(hx - 40, hy - 8); ctx.stroke();
+    // rope coil near the door
     ctx.strokeStyle = "#c9b483";
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.arc(dx + 62, top + 40, 8, 0, 7);
+    ctx.arc(hx + 52, hy - 6, 7, 0, 7);
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(dx + 62, top + 40, 4.5, 0, 7);
+    ctx.arc(hx + 52, hy - 6, 3.5, 0, 7);
     ctx.stroke();
-    // lantern post at the end with warm glow
-    ctx.fillStyle = "#4a321c";
-    ctx.fillRect(dx + 48, bottom - 44, 6, 30);
-    ctx.fillRect(dx + 44, bottom - 50, 14, 8);
-    ctx.fillStyle = "rgba(255, 200, 90, 0.55)";
-    ctx.beginPath();
-    ctx.arc(dx + 51, bottom - 52, 6 + Math.sin(T * 3) * 1.5, 0, 7);
-    ctx.fill();
-    ctx.fillStyle = "rgba(255, 220, 130, 0.18)";
-    ctx.beginPath();
-    ctx.arc(dx + 51, bottom - 52, 22, 0, 7);
-    ctx.fill();
-    // small anchor hanging off the end
-    ctx.strokeStyle = "#3c3c3c";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(dx - 58, bottom - 2, 7, Math.PI, 0);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(dx - 58, bottom - 8);
-    ctx.lineTo(dx - 58, bottom + 8);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(dx - 66, bottom + 6);
-    ctx.lineTo(dx - 50, bottom + 6);
-    ctx.stroke();
-    // fishing bobber when actively fishing
+
+    // fishing bobber when actively fishing (cast from the hut platform)
     if (state.fish) {
-      var bb = dx + 96, bby = bottom - 4 + Math.sin(T * 2.5) * 3;
+      var bb = dx + 108, bby = bottom - 18 + Math.sin(T * 2.5) * 3;
       ctx.fillStyle = "#e05656";
       ctx.beginPath();
       ctx.arc(bb, bby, 5.5, 0, 7);
@@ -1492,7 +1497,7 @@
       ctx.strokeStyle = "rgba(244, 242, 237, 0.7)";
       ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.moveTo(dx + 51, bottom - 56);
+      ctx.moveTo(dx + 30, bottom - 40);
       ctx.lineTo(bb, bby);
       ctx.stroke();
       // ripple
